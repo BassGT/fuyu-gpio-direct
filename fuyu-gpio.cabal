@@ -13,9 +13,9 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  Fuyu.GPIO,
-                      Fuyu.GPIO.Unsafe
-    other-modules:    Fuyu.GPIO.Internal
+    exposed-modules:  Fuyu.GPIO.Direct,
+                      Fuyu.GPIO.Direct.Types,
+                      Fuyu.GPIO.Direct.Bindings
     build-depends:    base >= 4.19.2.0 && < 4.21,
                       unix
     extra-libraries:  gpiod
