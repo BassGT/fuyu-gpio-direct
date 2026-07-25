@@ -1,70 +1,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module Fuyu.GPIO.Direct.Bindings
-  ( -- * 2. CHIP MANAGEMENT BINDINGS
-    c_gpiod_chip_open
-  , p_gpiod_chip_close
-  , c_gpiod_chip_get_info
-  , c_gpiod_chip_get_path
-  , c_gpiod_chip_get_line_info
-  , c_gpiod_chip_watch_line_info
-  , c_gpiod_chip_unwatch_line_info
-  , c_gpiod_chip_get_fd 
-  , c_gpiod_chip_request_lines
-  , p_gpiod_line_request_release
-
-  -- * 3. CHIP INFO BINDINGS
-  , c_gpiod_chip_info_free
-  , c_gpiod_chip_info_get_name
-  , c_gpiod_chip_info_get_label
-  , c_gpiod_chip_info_get_num_lines
-
-  -- * 4. LINE INFORMATION BINDINGS
-  , c_gpiod_line_info_free
-  , c_gpiod_line_info_copy
-  , c_gpiod_line_info_get_offset
-  , c_gpiod_line_info_get_name
-  , c_gpiod_line_info_is_used
-  , c_gpiod_line_info_get_consumer
-  , c_gpiod_line_info_get_direction
-  , c_gpiod_line_info_get_edge_detection
-  , c_gpiod_line_info_get_bias
-  , c_gpiod_line_info_get_drive
-  , c_gpiod_line_info_is_active_low
-  , c_gpiod_line_info_is_debounced
-  , c_gpiod_line_info_get_debounce_period_us
-
-  -- * 5. LINE SETTINGS BINDINGS
-  , c_gpiod_line_settings_new
-  , c_gpiod_line_settings_free
-  , c_gpiod_line_settings_set_direction
-  , c_gpiod_line_settings_get_bias
-  , c_gpiod_line_settings_set_bias
-  , c_gpiod_line_settings_set_edge_detection
-
-  -- * 6. LINE CONFIGURATION BINDINGS
-  , c_gpiod_line_config_new
-  , c_gpiod_line_config_free
-  , c_gpiod_line_config_add_line_settings
-
-  -- * 7. LINE REQUESTS & I/O BINDINGS
-  , c_gpiod_line_request_get_value
-  , c_gpiod_line_request_set_value
-  , c_gpiod_line_request_wait_edge_events
-  , c_gpiod_line_request_read_edge_events
-
-  -- * 8. EDGE EVENTS & EVENT BUFFER BINDINGS
-  , c_gpiod_edge_event_buffer_new
-  , c_gpiod_edge_event_buffer_free
-  , c_gpiod_edge_event_get_event_type
-  , c_gpiod_edge_event_buffer_get_event
-  , c_gpiod_edge_event_get_timestamp_ns
-  , c_gpiod_edge_event_get_line_offset
-  ) where
+module Fuyu.GPIO.Direct.Bindings where
 
 import Foreign.C.String (CString)
 import Foreign.C.Types (CInt(..), CLong(..), CSize(..), CUInt(..), CULong(..), CBool(..))
-import Foreign.Ptr (FunPtr, Ptr)
+import Foreign.Ptr (Ptr)
 import Fuyu.GPIO.Direct.Types
+import Data.Int (Int64)
 
 --------------------------------------------------------------------------------
 -- 2. CHIP MANAGEMENT
@@ -73,8 +14,8 @@ import Fuyu.GPIO.Direct.Types
 foreign import ccall "gpiod_chip_open"
   c_gpiod_chip_open :: CString -> IO (Ptr CGpiodChip)
     
-foreign import ccall "&gpiod_chip_close"
-  p_gpiod_chip_close :: FunPtr (Ptr CGpiodChip -> IO ())
+foreign import ccall "gpiod_chip_close"
+  c_gpiod_chip_close :: Ptr CGpiodChip -> IO ()
 
 foreign import ccall "gpiod_chip_get_info"
   c_gpiod_chip_get_info :: Ptr CGpiodChip -> IO (Ptr CGpiodChipInfo) 
@@ -95,18 +36,21 @@ foreign import ccall "gpiod_chip_get_fd"
   c_gpiod_chip_get_fd :: Ptr CGpiodChip -> IO CInt 
 
 foreign import ccall "gpiod_chip_wait_info_event"
-  c_gpiod_chip_wait_info_event  :: Ptr CGpiodChip -> CInt ->IO CInt
+  c_gpiod_chip_wait_info_event :: Ptr CGpiodChip -> Int64 ->  IO CInt 
 
-foreign import ccall ""   
-  
+foreign import ccall "gpiod_chip_read_info_event"
+  c_gpiod_chip_read_info_event :: Ptr CGpiodChip -> IO (Ptr CGpiodInfoEvent)
+
 foreign import ccall "gpiod_chip_request_lines"
   c_gpiod_chip_request_lines :: Ptr CGpiodChip 
                              -> Ptr CGpiodRequestConfig
                              -> Ptr CGpiodLineConfig
                              -> IO (Ptr CGpiodLineRequest)
-
-foreign import ccall "&gpiod_line_request_release"
-  p_gpiod_line_request_release :: FunPtr (Ptr CGpiodLineRequest -> IO ())
+foreign import ccall "gpiod_chip_get_line_offset_from_name"
+  c_gpiod_chip_get_line_offset_from_name :: Ptr CGpiodChip -> CString -> IO CInt
+  
+foreign import ccall "gpiod_line_request_release"
+  c_gpiod_line_request_release :: Ptr CGpiodLineRequest -> IO ()
 
 --------------------------------------------------------------------------------
 -- 3. CHIP INFO

@@ -1,143 +1,135 @@
 module Fuyu.GPIO.Direct
   ( module Fuyu.GPIO.Direct.Types
   , module Fuyu.GPIO.Direct.Bindings
-
-  -- * 2. CHIP MANAGEMENT
-  , withChip
-  , openChip
-  , closeChip
-  , getChipInfo
-  , getChipPath
-  , getChipLineInfo
-  , requestLines
-
-  -- * 3. CHIP INFO
-  , chipInfoFree
-  , getChipName
-  , getChipLabel
-  , getChipNumLines
-  , withChipInfo
-
-  -- * 4. LINE INFORMATION
-  , lineInfoFree
-  , copyLineInfo
-  , getLineOffset
-  , getLineName
-  , isLineUsed
-  , getLineConsumer
-  , getLineDirection
-  , getLineEdgeDetection
-  , getLineBias
-  , isLineActiveLow
-  , isDebounced
-  , getDebouncePeriod
-
-  -- * 5. LINE SETTINGS
-  , directionToC
-  , biasToC
-  , edgeToC
-  , setDirection
-  , setBias
-  , setEdgeDetection
-  , withLineSettings
-
-  -- * 6. LINE CONFIGURATION
-  , addConfigToLineSettings
-  , withLineConfig
-
-  -- * 7. LINE REQUESTS & I/O
-  , lineValueToC
-  , timeoutNsToC
-  , getValue
-  , setValue
-  , closeLineRequest
-  , waitEdgeEvents
-  , withLineRequest
-
-  -- * 8. EDGE EVENTS & EVENT BUFFER
-  , edgeEventTypeToC
-  , cToEdgeEventType
-  , readyToLineRequest
-  , readEventsIntoBuffer
-  , getRawEventFromBuffer
-  , getRawLineOffset
-  , getRawEventType
-  , getRawTimestampNs
-  , rawToEdgeEvent
-  , readEdgeEvents
-  , withRawEdgeEvents
-  , withEdgeEventBuffer
+  , module Fuyu.GPIO.Direct
   ) where
 
 import Control.Exception (bracket)
+import System.Posix.Types (Fd(..))
 import Control.Monad (forM)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
-import Foreign.C.Error
-  ( throwErrnoIfMinus1
-  , throwErrnoIfMinus1_
-  , throwErrnoIfNull
-  , throwErrnoPathIfNull
-  )
-import Foreign.C.String (peekCString, withCString)
+import Foreign.C.Error (Errno, getErrno, eINVAL)
 import Foreign.C.Types (CInt(..), CLong(..))
-import Foreign.ForeignPtr (finalizeForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.Marshal.Array (withArray)
 import Foreign.Marshal.Utils (toBool)
-import Foreign.Ptr (nullPtr)
+import Foreign.Ptr (Ptr, nullPtr)
 
 import Fuyu.GPIO.Direct.Bindings
 import Fuyu.GPIO.Direct.Types
 
 --------------------------------------------------------------------------------
+-- INTERNAL ERROR HELPERS
+--------------------------------------------------------------------------------
+
+checkNull :: IO (Ptr a) -> IO (Either Errno (Ptr a))
+checkNull action = do
+  ptr <- action
+  if ptr == nullPtr
+    then Left <$> getErrno
+    else return $ Right ptr
+
+checkMinusOne :: IO CInt -> IO (Either Errno ())
+checkMinusOne action = do
+  res <- action
+  if res == -1
+    then Left <$> getErrno
+    else return $ Right ()
+    
+--------------------------------------------------------------------------------
+-- INTERNAL HASKELL TYPE TRADUCTORS
+--------------------------------------------------------------------------------
+ 
+timeoutNsToC :: TimeoutNs -> CLong
+timeoutNsToC Immediate        = 0
+timeoutNsToC Infinite         = -1
+timeoutNsToC (Nanoseconds ns) = fromIntegral ns
+
+--------------------------------------------------------------------------------
 -- 2. CHIP MANAGEMENT
 --------------------------------------------------------------------------------
 
--- | Helper to open and use a chip safely, guaranteeing its release.
-withChip :: FilePath -> (Chip -> IO a) -> IO a
-withChip path = bracket (openChip path) closeChip
-
--- | Open a GPIO chip by its filesystem path.
-openChip :: FilePath -> IO Chip
-openChip str = do
-  chip <- throwErrnoPathIfNull "openChip" str $
-            withCString str c_gpiod_chip_open
-  Chip <$> newForeignPtr p_gpiod_chip_close chip
+-- | Open a GPIO chip by its filesystem path as ByteString.
+openChip :: ByteString -> IO (Either Errno Chip)
+openChip bs = BS.useAsCString bs $ \cStr -> do
+  res <- checkNull (c_gpiod_chip_open cStr)
+  return $ Chip <$> res
 
 -- | Close a GPIO chip and release all associated resources.
 closeChip :: Chip -> IO ()
-closeChip (Chip chip) = finalizeForeignPtr chip
+closeChip (Chip ptr) = c_gpiod_chip_close ptr
 
 -- | Get information about the chip.
-getChipInfo :: Chip -> IO ChipInfo
-getChipInfo (Chip chip) = do
-  res <- throwErrnoIfNull "getChipInfo" $ 
-           withForeignPtr chip $ \ptr -> c_gpiod_chip_get_info ptr
-  return $ ChipInfo res
+getChipInfo :: Chip -> IO (Either Errno ChipInfo)
+getChipInfo (Chip ptr) = do
+  res <- checkNull (c_gpiod_chip_get_info ptr)
+  return $ ChipInfo <$> res
 
--- | Get the path used to open the chip.
-getChipPath :: Chip -> IO FilePath
-getChipPath (Chip chip) = do
-  res <- throwErrnoIfNull "getChipPath" $
-           withForeignPtr chip $ \ptr -> c_gpiod_chip_get_path ptr
-  peekCString res
+-- | Get the path used to open the chip as ByteString.
+getChipPath :: Chip -> IO (Either Errno ByteString)
+getChipPath (Chip ptr) = do
+  res <- checkNull (c_gpiod_chip_get_path ptr)
+  case res of
+    Left err -> return (Left err)
+    Right cStr -> Right <$> BS.packCString cStr
 
 -- | Get a snapshot of information about a line.
-getChipLineInfo :: Chip -> LineOffset -> IO LineInfo
-getChipLineInfo (Chip chip) (LineOffset offset) = do
-  res <- throwErrnoIfNull "getChipLineInfo" $
-           withForeignPtr chip $ \ptr -> c_gpiod_chip_get_line_info ptr (fromIntegral offset)
-  return $ LineInfo res 
+getChipLineInfo :: Chip -> LineOffset -> IO (Either Errno LineInfo)
+getChipLineInfo (Chip ptr) (LineOffset offset) = do
+  res <- checkNull $ c_gpiod_chip_get_line_info ptr (fromIntegral offset)
+  return $ LineInfo <$> res
+
+-- | Get a snapshot of the status of a line (LineOffset type) and start watching it for future changes.
+watchChipLineInfo :: Chip -> LineOffset -> IO (Either Errno LineInfo)
+watchChipLineInfo (Chip ptr) (LineOffset offset) = do
+  res <- checkNull $ c_gpiod_chip_watch_line_info ptr (fromIntegral offset)
+  return $ LineInfo <$> res   
+
+-- | Stop watching a line for status changes.
+unwatchChipLineInfo :: Chip -> LineOffset -> IO (Either Errno ())
+unwatchChipLineInfo (Chip ptr) (LineOffset offset) = do
+  checkMinusOne $ c_gpiod_chip_unwatch_line_info ptr (fromIntegral offset)
+
+-- | Get the file descriptor associated with the chip.
+getChipFd :: Chip -> IO Fd
+getChipFd (Chip ptr) = Fd <$> c_gpiod_chip_get_fd ptr
+
+-- | Wait for line status change events on any of the watched lines on the chip. 
+waitChipInfoEvent :: Chip -> TimeoutNs -> IO (Either Errno WaitResult)
+waitChipInfoEvent (Chip ptr) ns = do
+  res <- c_gpiod_chip_wait_info_event ptr (fromIntegral $ timeoutNsToC ns)
+  if res == -1
+    then Left <$> getErrno
+    else case res of
+      1 -> return $ Right EventReady
+      0 -> return $ Right Timeout
+      _ -> return $ Right Timeout
+  
+-- | Read a single line status change event from the chip.
+readChipInfoEvent :: Chip -> IO (Either Errno InfoEvent)
+readChipInfoEvent (Chip ptr) = do
+  res <- checkNull $ c_gpiod_chip_read_info_event ptr 
+  return $ InfoEvent <$> res   
+
+-- | Map a line’s name to its offset (LineOffset type) within the chip.
+getChipLineOffsetFromName :: Chip -> ByteString -> IO (Either Errno LineOffset)
+getChipLineOffsetFromName (Chip ptr) name = do
+  res <- BS.useAsCString name $ \cStr -> c_gpiod_chip_get_line_offset_from_name  ptr cStr
+  if res == -1 
+  then Left <$> getErrno 
+  else return $ Right $ LineOffset (fromIntegral res)
+    
 
 -- | Request a set of lines from the chip.
-requestLines :: Chip -> Maybe RequestConfig -> LineConfig -> IO LineRequest 
-requestLines (Chip chip) maybeReqConf (LineConfig lineConf) = do
+requestLines :: Chip -> Maybe RequestConfig -> LineConfig -> IO (Either Errno LineRequest)
+requestLines (Chip chipPtr) maybeReqConf (LineConfig lineConfPtr) = do
   let reqConfPtr = case maybeReqConf of
                      Just (RequestConfig ptr) -> ptr
                      Nothing                  -> nullPtr
-  requestedLines <- throwErrnoIfNull "requestLines" $
-    withForeignPtr chip $ \ptr -> c_gpiod_chip_request_lines ptr reqConfPtr lineConf
-  LineRequest <$> newForeignPtr p_gpiod_line_request_release requestedLines 
+  res <- checkNull (c_gpiod_chip_request_lines chipPtr reqConfPtr lineConfPtr)
+  return $ LineRequest <$> res
 
 --------------------------------------------------------------------------------
 -- 3. CHIP INFO
@@ -147,17 +139,21 @@ requestLines (Chip chip) maybeReqConf (LineConfig lineConf) = do
 chipInfoFree :: ChipInfo -> IO ()
 chipInfoFree (ChipInfo chipInfo) = c_gpiod_chip_info_free chipInfo 
 
--- | Get the name of the chip as represented in the kernel. 
-getChipName :: ChipInfo -> IO String
+-- | Get the name of the chip as represented in the kernel as ByteString. 
+getChipName :: ChipInfo -> IO ByteString
 getChipName (ChipInfo chipInfo) = do
   res <- c_gpiod_chip_info_get_name chipInfo
-  peekCString res 
+  if res == nullPtr
+    then return BS.empty
+    else BS.packCString res
 
--- | Get the label of the chip as represented in the kernel. 
-getChipLabel :: ChipInfo -> IO String 
+-- | Get the label of the chip as represented in the kernel as ByteString. 
+getChipLabel :: ChipInfo -> IO ByteString
 getChipLabel (ChipInfo chipInfo) = do
   res <- c_gpiod_chip_info_get_label chipInfo
-  peekCString res 
+  if res == nullPtr
+    then return BS.empty
+    else BS.packCString res
 
 -- | Get the number of lines exposed by the chip. 
 getChipNumLines :: ChipInfo -> IO Int 
@@ -165,9 +161,6 @@ getChipNumLines (ChipInfo chipInfo) = do
   res <- c_gpiod_chip_info_get_num_lines chipInfo
   return $ fromIntegral res
 
--- | Perform an action with ChipInfo and automatically free it.
-withChipInfo :: Chip -> (ChipInfo -> IO a) -> IO a
-withChipInfo chip = bracket (getChipInfo chip) chipInfoFree
 
 --------------------------------------------------------------------------------
 -- 4. LINE INFORMATION
@@ -178,20 +171,24 @@ lineInfoFree :: LineInfo -> IO ()
 lineInfoFree (LineInfo info) = c_gpiod_line_info_free info
 
 -- | Copy a line info object.
-copyLineInfo :: LineInfo -> IO LineInfo
-copyLineInfo (LineInfo info) = LineInfo <$> c_gpiod_line_info_copy info 
+copyLineInfo :: LineInfo -> IO (Either Errno LineInfo)
+copyLineInfo (LineInfo info) = do
+  res <- checkNull (c_gpiod_line_info_copy info)
+  return $ LineInfo <$> res
 
 -- | Get the offset of the line. 
 getLineOffset :: LineInfo -> IO LineOffset
-getLineOffset (LineInfo info) = LineOffset . fromIntegral <$> c_gpiod_line_info_get_offset info  
+getLineOffset (LineInfo info) = do
+  offset <- c_gpiod_line_info_get_offset info
+  return $ LineOffset (fromIntegral offset)
 
--- | Get the name of the line. 
-getLineName :: LineInfo -> IO (Maybe String)
+-- | Get the name of the line as ByteString. 
+getLineName :: LineInfo -> IO (Maybe ByteString)
 getLineName (LineInfo info) = do
   res <- c_gpiod_line_info_get_name info
   if res == nullPtr
-  then return Nothing
-  else Just <$> peekCString res 
+    then return Nothing
+    else Just <$> BS.packCString res 
 
 -- | Check if the line is in use. 
 isLineUsed :: LineInfo -> IO Bool
@@ -199,11 +196,13 @@ isLineUsed (LineInfo info) = do
   res <- c_gpiod_line_info_is_used info
   return $ toBool res
 
--- | Get the GPIO consumer's name of the line as it is represented in the kernel. 
-getLineConsumer :: LineInfo -> IO String
+-- | Get the GPIO consumer's name of the line as ByteString. 
+getLineConsumer :: LineInfo -> IO (Maybe ByteString)
 getLineConsumer (LineInfo info) = do
-  name <- c_gpiod_line_info_get_consumer info  
-  peekCString name
+  name <- c_gpiod_line_info_get_consumer info
+  if name == nullPtr
+    then return Nothing
+    else Just <$> BS.packCString name
 
 -- | Get the direction setting of the line.
 getLineDirection :: LineInfo -> IO Direction
@@ -213,7 +212,7 @@ getLineDirection (LineInfo info) = do
     1 -> return DirAsIs
     2 -> return DirInput
     3 -> return DirOutput
-    _ -> ioError (userError $ "getLineDirection: Unexpected enum of line direction " ++ show dir)
+    _ -> return DirAsIs
 
 -- | Get the edge detection setting of the line.
 getLineEdgeDetection :: LineInfo -> IO Edge
@@ -224,7 +223,7 @@ getLineEdgeDetection (LineInfo info) = do
     2 -> return EdgeRising
     3 -> return EdgeFalling
     4 -> return EdgeBoth 
-    _ -> ioError (userError $ "getLineEdgeDetection: Unexpected enum of edge detection " ++ show edge)
+    _ -> return EdgeNone
 
 -- | Get the bias setting of the line.
 getLineBias :: LineInfo -> IO Bias
@@ -236,7 +235,7 @@ getLineBias (LineInfo info) = do
     3 -> return BiasDisabled 
     4 -> return BiasPullUp  
     5 -> return BiasPullDown
-    _ -> ioError (userError $ "getLineBias: Unexpected enum of bias " ++ show bias)
+    _ -> return BiasUnknown
 
 -- | Check if the logical value of the line is inverted compared to physical.
 isLineActiveLow :: LineInfo -> IO Bool
@@ -279,51 +278,48 @@ edgeToC EdgeFalling = 3
 edgeToC EdgeBoth    = 4 
 
 -- | Set the line direction in the settings.
-setDirection :: LineSettings -> Direction -> IO ()
+setDirection :: LineSettings -> Direction -> IO (Either Errno ())
 setDirection (LineSettings settings) dir =
-  throwErrnoIfMinus1_ "setDirection" $
-    c_gpiod_line_settings_set_direction settings (directionToC dir)
+  checkMinusOne $ c_gpiod_line_settings_set_direction settings (directionToC dir)
 
 -- | Set the electrical bias in the settings.
-setBias :: LineSettings -> Bias -> IO ()
-setBias _ BiasUnknown = ioError (userError "setBias: Cannot set an invalid bias value (BiasUnknown is only for query/return)")
+setBias :: LineSettings -> Bias -> IO (Either Errno ())
+setBias _ BiasUnknown = return (Left eINVAL)
 setBias (LineSettings settings) bias =
-  throwErrnoIfMinus1_ "setBias" $
-    c_gpiod_line_settings_set_bias settings (biasToC bias)
+  checkMinusOne $ c_gpiod_line_settings_set_bias settings (biasToC bias)
 
 -- | Set the edge detection in the settings.
-setEdgeDetection :: LineSettings -> Edge -> IO ()
+setEdgeDetection :: LineSettings -> Edge -> IO (Either Errno ())
 setEdgeDetection (LineSettings settings) edge =
-  throwErrnoIfMinus1_ "setEdgeDetection" $
-    c_gpiod_line_settings_set_edge_detection settings (edgeToC edge)
+  checkMinusOne $ c_gpiod_line_settings_set_edge_detection settings (edgeToC edge)
 
 -- | Allocate and use line settings safely, guaranteeing their release.
-withLineSettings :: (LineSettings -> IO a) -> IO a
-withLineSettings = bracket acquire release
-  where acquire = do
-          lineSettings <- throwErrnoIfNull "withLineSettings" c_gpiod_line_settings_new
-          return $ LineSettings lineSettings   
-        release (LineSettings lineSettings) = c_gpiod_line_settings_free lineSettings 
+withLineSettings :: (LineSettings -> IO a) -> IO (Either Errno a)
+withLineSettings action = do
+  res <- checkNull c_gpiod_line_settings_new
+  case res of
+    Left err -> return (Left err)
+    Right ptr -> bracket (return $ LineSettings ptr) (\(LineSettings s) -> c_gpiod_line_settings_free s) (fmap Right . action)
 
 --------------------------------------------------------------------------------
 -- 6. LINE CONFIGURATION
 --------------------------------------------------------------------------------
 
 -- | Add specific settings to a group of offsets in the configuration.
-addConfigToLineSettings :: LineConfig -> [LineOffset] -> LineSettings -> IO ()
+addConfigToLineSettings :: LineConfig -> [LineOffset] -> LineSettings -> IO (Either Errno ())
 addConfigToLineSettings (LineConfig config) pins (LineSettings settings) = do
   let size = fromIntegral (length pins)
-  throwErrnoIfMinus1_ "addConfigToLineSettings" $
+  checkMinusOne $
     withArray (map (\(LineOffset p) -> fromIntegral p) pins) $ \ptr -> 
       c_gpiod_line_config_add_line_settings config ptr size settings
 
 -- | Allocate and use a line configuration safely, guaranteeing its release.
-withLineConfig :: (LineConfig -> IO a) -> IO a
-withLineConfig = bracket acquire release
-  where acquire = do
-          lineConfig <- throwErrnoIfNull "withLineConfig" c_gpiod_line_config_new
-          return $ LineConfig lineConfig
-        release (LineConfig lineConfig) = c_gpiod_line_config_free lineConfig 
+withLineConfig :: (LineConfig -> IO a) -> IO (Either Errno a)
+withLineConfig action = do
+  res <- checkNull c_gpiod_line_config_new
+  case res of
+    Left err -> return (Left err)
+    Right ptr -> bracket (return $ LineConfig ptr) (\(LineConfig c) -> c_gpiod_line_config_free c) (fmap Right . action)
 
 --------------------------------------------------------------------------------
 -- 7. LINE REQUESTS & I/O
@@ -334,48 +330,46 @@ lineValueToC LineActive   = 1
 lineValueToC LineInactive = 0
 lineValueToC LineError    = -1 
 
-timeoutNsToC :: TimeoutNs -> CLong
-timeoutNsToC Infinite         = -1
-timeoutNsToC (Nanoseconds ns) = fromIntegral ns
 
 -- | Get the logical value of a requested line.
-getValue :: LineRequest -> LineOffset -> IO LineValue 
-getValue (LineRequest request) (LineOffset offset) = do
-  lineValue <- withForeignPtr request $
-    \ptr -> c_gpiod_line_request_get_value ptr (fromIntegral offset)
-  case lineValue of 
-    1 -> return LineActive 
-    0 -> return LineInactive 
-    _ -> return LineError  
+getValue :: LineRequest -> LineOffset -> IO (Either Errno LineValue)
+getValue (LineRequest requestPtr) (LineOffset offset) = do
+  lineValue <- c_gpiod_line_request_get_value requestPtr (fromIntegral offset)
+  if lineValue == -1
+    then Left <$> getErrno
+    else case lineValue of 
+      1 -> return $ Right LineActive 
+      0 -> return $ Right LineInactive 
+      _ -> return $ Right LineError  
 
 -- | Set the logical value of a requested line.
-setValue :: LineRequest -> LineOffset -> LineValue -> IO ()
-setValue _ _ LineError =
-  ioError (userError "setValue: Cannot use an invalid set line value (LineError)")
-setValue (LineRequest request) (LineOffset offset) value =
-  throwErrnoIfMinus1_ "setValue" $
-    withForeignPtr request $ \ptr ->
-      c_gpiod_line_request_set_value ptr (fromIntegral offset) (lineValueToC value)
+setValue :: LineRequest -> LineOffset -> LineValue -> IO (Either Errno ())
+setValue _ _ LineError = return (Left eINVAL)
+setValue (LineRequest requestPtr) (LineOffset offset) value =
+  checkMinusOne $ c_gpiod_line_request_set_value requestPtr (fromIntegral offset) (lineValueToC value)
 
 -- | Close a request and release requested lines.
 closeLineRequest :: LineRequest -> IO ()
-closeLineRequest (LineRequest request) = finalizeForeignPtr request
+closeLineRequest (LineRequest requestPtr) = c_gpiod_line_request_release requestPtr
 
 -- | Wait for edge events to occur on requested lines.
-waitEdgeEvents :: LineRequest -> TimeoutNs -> IO WaitResult 
-waitEdgeEvents (LineRequest request) timeoutNs = do
-  res <- throwErrnoIfMinus1 "waitEdgeEvents" $
-    withForeignPtr request $ \ptr ->
-      c_gpiod_line_request_wait_edge_events ptr (timeoutNsToC timeoutNs)
-  case res of
-    1 -> return $ EventsReady (ReadyRequest request)
-    0 -> return Timeout
-    _ -> ioError (userError "waitEdgeEvents: unexpected return value")
+waitEdgeEvents :: LineRequest -> TimeoutNs -> IO (Either Errno WaitResult)
+waitEdgeEvents (LineRequest requestPtr) timeoutNs = do
+  res <- c_gpiod_line_request_wait_edge_events requestPtr (timeoutNsToC timeoutNs)
+  if res == -1
+    then Left <$> getErrno
+    else case res of
+      1 -> return $ Right EventReady
+      0 -> return $ Right Timeout
+      _ -> return $ Right Timeout
 
 -- | Allocate and use requested lines safely, guaranteeing their release.
-withLineRequest :: Chip -> Maybe RequestConfig -> LineConfig -> (LineRequest -> IO a) -> IO a
-withLineRequest chip reqConf lineConf =
-  bracket (requestLines chip reqConf lineConf) closeLineRequest
+withLineRequest :: Chip -> Maybe RequestConfig -> LineConfig -> (LineRequest -> IO a) -> IO (Either Errno a)
+withLineRequest chip reqConf lineConf action = do
+  eReq <- requestLines chip reqConf lineConf
+  case eReq of
+    Left err -> return (Left err)
+    Right req -> bracket (return req) closeLineRequest (fmap Right . action)
 
 --------------------------------------------------------------------------------
 -- 8. EDGE EVENTS & EVENT BUFFER
@@ -392,22 +386,21 @@ cToEdgeEventType _ = error "Invalid CInt to translate to Edge Event Type"
 
 -- | Convert a ReadyRequest to a LineRequest.
 readyToLineRequest :: ReadyRequest -> LineRequest
-readyToLineRequest (ReadyRequest fptr) = LineRequest fptr
+readyToLineRequest (ReadyRequest ptr) = LineRequest ptr
 
 -- | Read raw edge events into buffer.
-readEventsIntoBuffer :: LineRequest -> EventBuffer -> IO Int
-readEventsIntoBuffer (LineRequest fptr) (EventBuffer buffer (EventBufferCapacity maxEvents)) =
-  withForeignPtr fptr $ \reqPtr -> do
-    count <- throwErrnoIfMinus1 "readEventsIntoBuffer" $
-      c_gpiod_line_request_read_edge_events reqPtr buffer (fromIntegral maxEvents)
-    return (fromIntegral count)
+readEventsIntoBuffer :: LineRequest -> EventBuffer -> IO (Either Errno Int)
+readEventsIntoBuffer (LineRequest reqPtr) (EventBuffer buffer (EventBufferCapacity maxEvents)) = do
+  count <- c_gpiod_line_request_read_edge_events reqPtr buffer (fromIntegral maxEvents)
+  if count == -1
+    then Left <$> getErrno
+    else return $ Right (fromIntegral count)
 
 -- | Retrieve raw edge event pointer from buffer.
-getRawEventFromBuffer :: EventBuffer -> BufferIndex -> IO RawEdgeEvent
+getRawEventFromBuffer :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
 getRawEventFromBuffer (EventBuffer buffer _) (BufferIndex idx) = do
-  ptr <- throwErrnoIfNull "getRawEventFromBuffer" $
-    c_gpiod_edge_event_buffer_get_event buffer (fromIntegral idx)
-  return $ RawEdgeEvent ptr
+  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer (fromIntegral idx))
+  return $ RawEdgeEvent <$> res
 
 -- | Extract line offset from raw edge event pointer.
 getRawLineOffset :: RawEdgeEvent -> IO LineOffset
@@ -422,7 +415,7 @@ getRawEventType (RawEdgeEvent event) = do
   case cType of
     1 -> return EventRising
     2 -> return EventFalling
-    _ -> ioError (userError $ "getRawEventType: unexpected event type " ++ show cType)
+    _ -> return EventRising
 
 -- | Extract timestamp in nanoseconds from raw edge event pointer.
 getRawTimestampNs :: RawEdgeEvent -> IO TimestampNs
@@ -438,34 +431,43 @@ rawToEdgeEvent raw = EdgeEvent
   <*> getRawTimestampNs raw
 
 -- | Read buffered edge events once waitEdgeEvents indicates readiness.
-readEdgeEvents :: ReadyRequest -> EventBuffer -> IO (NonEmpty EdgeEvent)
-readEdgeEvents readyReq buf = do
-  let req = readyToLineRequest readyReq
-  count <- readEventsIntoBuffer req buf
-  events <- forM [0 .. (count - 1)] $ \idx -> do
-    raw <- getRawEventFromBuffer buf (BufferIndex (fromIntegral idx))
-    rawToEdgeEvent raw
-  case NE.nonEmpty events of
-    Just ne -> return ne
-    Nothing -> ioError (userError "readEdgeEvents: expected at least one event from ReadyRequest but got none")
+readEdgeEvents :: LineRequest -> EventBuffer -> IO (Either Errno (NonEmpty EdgeEvent))
+readEdgeEvents req buf = do
+  eCount <- readEventsIntoBuffer req buf
+  case eCount of
+    Left err -> return (Left err)
+    Right count -> do
+      events <- forM [0 .. (count - 1)] $ \idx -> do
+        eRaw <- getRawEventFromBuffer buf (BufferIndex (fromIntegral idx))
+        case eRaw of
+          Left _ -> error "readEdgeEvents: invalid raw event index"
+          Right raw -> rawToEdgeEvent raw
+      case NE.nonEmpty events of
+        Just ne -> return (Right ne)
+        Nothing -> return (Left eINVAL)
 
 -- | Process raw edge events directly in buffer using callback.
-withRawEdgeEvents :: ReadyRequest -> EventBuffer -> (RawEdgeEvent -> IO a) -> IO (NonEmpty a)
-withRawEdgeEvents readyReq buf action = do
-  let req = readyToLineRequest readyReq
-  count <- readEventsIntoBuffer req buf
-  results <- forM [0 .. (count - 1)] $ \idx -> do
-    raw <- getRawEventFromBuffer buf (BufferIndex (fromIntegral idx))
-    action raw
-  case NE.nonEmpty results of
-    Just ne -> return ne
-    Nothing -> ioError (userError "withRawEdgeEvents: expected at least one event from ReadyRequest but got none")
+withRawEdgeEvents :: LineRequest -> EventBuffer -> (RawEdgeEvent -> IO a) -> IO (Either Errno (NonEmpty a))
+withRawEdgeEvents req buf action = do
+  eCount <- readEventsIntoBuffer req buf
+  case eCount of
+    Left err -> return (Left err)
+    Right count -> do
+      results <- forM [0 .. (count - 1)] $ \idx -> do
+        eRaw <- getRawEventFromBuffer buf (BufferIndex (fromIntegral idx))
+        case eRaw of
+          Left _ -> error "withRawEdgeEvents: invalid raw event index"
+          Right raw -> action raw
+      case NE.nonEmpty results of
+        Just ne -> return (Right ne)
+        Nothing -> return (Left eINVAL)
 
 -- | Run a computation with temporary event buffer, guaranteeing release.
-withEdgeEventBuffer :: EventBufferCapacity -> (EventBuffer -> IO a) -> IO a
-withEdgeEventBuffer (EventBufferCapacity capacity) = bracket acquire release 
-  where acquire = do
-          res <- throwErrnoIfNull "withEdgeEventBuffer" $
-            c_gpiod_edge_event_buffer_new (fromIntegral capacity)
-          return $ EventBuffer res (EventBufferCapacity capacity)
-        release (EventBuffer buffer _) = c_gpiod_edge_event_buffer_free buffer
+withEdgeEventBuffer :: EventBufferCapacity -> (EventBuffer -> IO a) -> IO (Either Errno a)
+withEdgeEventBuffer (EventBufferCapacity capacity) action = do
+  res <- checkNull (c_gpiod_edge_event_buffer_new (fromIntegral capacity))
+  case res of
+    Left err -> return (Left err)
+    Right bufferPtr ->
+      let buf = EventBuffer bufferPtr (EventBufferCapacity capacity)
+      in bracket (return buf) (\(EventBuffer b _) -> c_gpiod_edge_event_buffer_free b) (fmap Right . action)

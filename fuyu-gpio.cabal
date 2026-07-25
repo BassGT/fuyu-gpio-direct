@@ -17,6 +17,7 @@ library
                       Fuyu.GPIO.Direct.Types,
                       Fuyu.GPIO.Direct.Bindings
     build-depends:    base >= 4.19.2.0 && < 4.21,
+                      bytestring,
                       unix
     extra-libraries:  gpiod
     hs-source-dirs:   src
