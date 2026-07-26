@@ -140,17 +140,60 @@ foreign import ccall "gpiod_line_settings_new"
 foreign import ccall "gpiod_line_settings_free"
   c_gpiod_line_settings_free :: Ptr CGpiodLineSettings -> IO ()
     
+foreign import ccall "gpiod_line_settings_reset"
+  c_gpiod_line_settings_reset :: Ptr CGpiodLineSettings -> IO ()
+    
+foreign import ccall "gpiod_line_settings_copy"
+  c_gpiod_line_settings_copy :: Ptr CGpiodLineSettings -> IO (Ptr CGpiodLineSettings)
+
 foreign import ccall "gpiod_line_settings_set_direction"
-  c_gpiod_line_settings_set_direction :: Ptr CGpiodLineSettings -> CInt -> IO CInt
-
-foreign import ccall "gpiod_line_settings_get_bias"
-  c_gpiod_line_settings_get_bias :: Ptr CGpiodLineSettings -> IO CInt
-
-foreign import ccall "gpiod_line_settings_set_bias"
-  c_gpiod_line_settings_set_bias :: Ptr CGpiodLineSettings -> CInt -> IO CInt
+  c_gpiod_line_settings_set_direction :: Ptr CGpiodLineSettings -> CInt -> IO CInt      
+      
+foreign import ccall "gpiod_line_settings_get_direction"
+  c_gpiod_line_settings_get_direction :: Ptr CGpiodLineSettings -> IO CInt
 
 foreign import ccall "gpiod_line_settings_set_edge_detection"
   c_gpiod_line_settings_set_edge_detection :: Ptr CGpiodLineSettings -> CInt -> IO CInt 
+  
+foreign import ccall "gpiod_line_settings_get_edge_detection"
+  c_gpiod_line_settings_get_edge_detection :: Ptr CGpiodLineSettings -> IO CInt 
+
+foreign import ccall "gpiod_line_settings_set_bias"
+  c_gpiod_line_settings_set_bias :: Ptr CGpiodLineSettings -> CInt -> IO CInt
+  
+foreign import ccall "gpiod_line_settings_get_bias"
+  c_gpiod_line_settings_get_bias :: Ptr CGpiodLineSettings -> IO CInt
+
+foreign import ccall "gpiod_line_settings_set_drive"
+  c_gpiod_line_settings_set_drive :: Ptr CGpiodLineSettings -> CInt -> IO CInt
+
+foreign import ccall "gpiod_line_settings_get_drive"
+  c_gpiod_line_settings_get_drive :: Ptr CGpiodLineSettings -> IO CInt
+
+foreign import ccall "gpiod_line_settings_set_active_low"
+  c_gpiod_line_settings_set_active_low :: Ptr CGpiodLineSettings -> CBool -> IO ()  
+
+foreign import ccall "gpiod_line_settings_get_active_low"
+  c_gpiod_line_settings_get_active_low :: Ptr CGpiodLineSettings -> IO CBool
+
+foreign import ccall "gpiod_line_settings_set_debounce_period_us"
+  c_gpiod_line_settings_set_debounce_period_us :: Ptr CGpiodLineSettings -> CLong -> IO ()  
+
+foreign import ccall "gpiod_line_settings_get_debounce_period_us"
+  c_gpiod_line_settings_get_debounce_period_us :: Ptr CGpiodLineSettings -> IO CLong
+
+foreign import ccall "gpiod_line_settings_set_event_clock"
+  c_gpiod_line_settings_set_event_clock :: Ptr CGpiodLineSettings -> CInt -> IO CInt 
+
+foreign import ccall "gpiod_line_settings_get_event_clock"
+  c_gpiod_line_settings_get_event_clock :: Ptr CGpiodLineSettings -> IO CInt
+
+foreign import ccall "gpiod_line_settings_set_output_value"
+  c_gpiod_line_settings_set_output_value :: Ptr CGpiodLineSettings -> CInt -> IO CInt 
+
+foreign import ccall "gpiod_line_settings_get_output_value"
+  c_gpiod_line_settings_get_output_value :: Ptr CGpiodLineSettings -> IO CInt
+
 
 --------------------------------------------------------------------------------
 -- 7. LINE CONFIGURATION

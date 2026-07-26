@@ -4,7 +4,6 @@ module Fuyu.GPIO.Direct.Types where
 import Foreign.Ptr (Ptr)
 import Foreign.C.Types (CInt(..))
 import Data.Word (Word64)
-import Data.Int (Int64)
 
 --------------------------------------------------------------------------------
 -- CORE TYPES & WRAPPERS
