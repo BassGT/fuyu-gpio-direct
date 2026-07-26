@@ -131,6 +131,19 @@ cToLineClock 2 = Realtime
 cToLineClock 3 = Hardware
 cToLineClock n = ClockOther n
 
+-- | InfoEventType translators.
+cToInfoEventType :: CInt -> InfoEventType
+cToInfoEventType 1 = LineRequested
+cToInfoEventType 2 = LineReleased
+cToInfoEventType 3 = LineConfigChanged
+cToInfoEventType n = InfoEventOther n
+
+infoEventTypeToC :: InfoEventType -> CInt
+infoEventTypeToC LineRequested      = 1
+infoEventTypeToC LineReleased       = 2
+infoEventTypeToC LineConfigChanged  = 3
+infoEventTypeToC (InfoEventOther n) = n
+
 --------------------------------------------------------------------------------
 -- 1. CHIP MANAGEMENT
 --------------------------------------------------------------------------------
@@ -330,7 +343,30 @@ getLineEventClock (LineInfo info) = do
   return $ cToLineClock res
 
 --------------------------------------------------------------------------------
--- 5. LINE SETTINGS
+-- 5. LINE WATCH (INFO EVENT) 
+--------------------------------------------------------------------------------
+-- | Free the info event object and release all associated resources. 
+infoEventFree :: InfoEvent -> IO ()
+infoEventFree (InfoEvent event) = c_gpiod_info_event_free event 
+
+-- | Get the event type of the status change event.
+getInfoEventType :: InfoEvent -> IO InfoEventType
+getInfoEventType (InfoEvent event) = do
+  res <- c_gpiod_info_event_get_event_type event 
+  return $ cToInfoEventType res  
+
+-- | Get the timestamp in nanoseconds of the event (readed from the monotonic clock). 
+getInfoEventTimestamp :: InfoEvent -> IO TimestampNs 
+getInfoEventTimestamp (InfoEvent event) = 
+  TimestampNs <$> c_gpiod_info_event_get_timestamp_ns event
+
+-- | Get the snapshot of line-info associated with the event.
+getLineInfoOfInfoEvent :: InfoEvent -> IO LineInfo
+getLineInfoOfInfoEvent (InfoEvent event) =
+  LineInfo <$> c_gpiod_info_event_get_line_info event
+  
+--------------------------------------------------------------------------------
+-- 6. LINE SETTINGS
 --------------------------------------------------------------------------------
 
 -- | Set the line direction in the settings.
@@ -358,7 +394,7 @@ withLineSettings action = do
     Right ptr -> bracket (return $ LineSettings ptr) (\(LineSettings s) -> c_gpiod_line_settings_free s) (fmap Right . action)
 
 --------------------------------------------------------------------------------
--- 6. LINE CONFIGURATION
+-- 7. LINE CONFIGURATION
 --------------------------------------------------------------------------------
 
 -- | Add specific settings to a group of offsets in the configuration.
@@ -433,10 +469,6 @@ cToEdgeEventType :: CInt -> EdgeEventType
 cToEdgeEventType 1 = Rising
 cToEdgeEventType 2 = Falling
 cToEdgeEventType n = EventOther n
-
--- | Convert a ReadyRequest to a LineRequest.
-readyToLineRequest :: ReadyRequest -> LineRequest
-readyToLineRequest (ReadyRequest ptr) = LineRequest ptr
 
 -- | Read raw edge events into buffer.
 readEventsIntoBuffer :: LineRequest -> EventBuffer -> IO (Either Errno Int)

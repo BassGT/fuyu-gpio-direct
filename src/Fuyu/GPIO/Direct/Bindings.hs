@@ -6,6 +6,7 @@ import Foreign.C.Types (CInt(..), CLong(..), CSize(..), CUInt(..), CULong(..), C
 import Foreign.Ptr (Ptr)
 import Fuyu.GPIO.Direct.Types
 import Data.Int (Int64)
+import Data.Word (Word64)
 
 --------------------------------------------------------------------------------
 -- 1. CHIP MANAGEMENT
@@ -115,7 +116,22 @@ foreign import ccall "gpiod_line_info_get_event_clock"
   c_gpiod_line_info_get_event_clock :: Ptr CGpiodLineInfo -> IO CInt
 
 --------------------------------------------------------------------------------
--- 5. LINE SETTINGS
+-- 5. LINE WATCH (INFO EVENT)
+--------------------------------------------------------------------------------
+foreign import ccall "gpiod_info_event_free"
+  c_gpiod_info_event_free :: Ptr CGpiodInfoEvent -> IO ()
+  
+foreign import ccall "gpiod_info_event_get_event_type"
+  c_gpiod_info_event_get_event_type :: Ptr CGpiodInfoEvent -> IO CInt
+  
+foreign import ccall "gpiod_info_event_get_timestamp_ns"
+  c_gpiod_info_event_get_timestamp_ns :: Ptr CGpiodInfoEvent -> IO Word64
+  
+foreign import ccall "gpiod_info_event_get_line_info"
+  c_gpiod_info_event_get_line_info :: Ptr CGpiodInfoEvent -> IO (Ptr CGpiodLineInfo)
+  
+--------------------------------------------------------------------------------
+-- 6. LINE SETTINGS
 --------------------------------------------------------------------------------
 
 foreign import ccall "gpiod_line_settings_new"
@@ -137,7 +153,7 @@ foreign import ccall "gpiod_line_settings_set_edge_detection"
   c_gpiod_line_settings_set_edge_detection :: Ptr CGpiodLineSettings -> CInt -> IO CInt 
 
 --------------------------------------------------------------------------------
--- 6. LINE CONFIGURATION
+-- 7. LINE CONFIGURATION
 --------------------------------------------------------------------------------
 
 foreign import ccall "gpiod_line_config_new"
