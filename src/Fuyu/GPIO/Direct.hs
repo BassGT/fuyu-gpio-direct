@@ -39,7 +39,7 @@ checkMinusOne action = do
     else return $ Right ()
     
 --------------------------------------------------------------------------------
--- INTERNAL HASKELL TYPE TRADUCTORS
+-- INTERNAL HASKELL TYPE TRADUCTORS TO CGPIOD TYPES 
 --------------------------------------------------------------------------------
  
 timeoutNsToC :: TimeoutNs -> CLong
@@ -47,8 +47,92 @@ timeoutNsToC Immediate        = 0
 timeoutNsToC Infinite         = -1
 timeoutNsToC (Nanoseconds ns) = fromIntegral ns
 
+-- | LineValue translators
+lineValueToC :: LineValue -> CInt
+lineValueToC LineActive    = 1
+lineValueToC LineInactive  = 0
+lineValueToC LineError     = -1 
+lineValueToC (LineOther n) = n
+
+cToLineValue :: CInt -> LineValue
+cToLineValue 1    = LineActive
+cToLineValue 0    = LineInactive
+cToLineValue (-1) = LineError
+cToLineValue n    = LineOther n
+
+-- | LineDirection translators
+lineDirectionToC :: LineDirection -> CInt
+lineDirectionToC DirAsIs      = 1
+lineDirectionToC DirInput     = 2
+lineDirectionToC DirOutput    = 3
+lineDirectionToC (DirOther n) = n
+
+cToLineDirection :: CInt -> LineDirection
+cToLineDirection 1 = DirAsIs
+cToLineDirection 2 = DirInput
+cToLineDirection 3 = DirOutput
+cToLineDirection n = DirOther n
+
+-- | LineEdge translators
+lineEdgeToC :: LineEdge -> CInt
+lineEdgeToC EdgeNone       = 1 
+lineEdgeToC EdgeRising     = 2
+lineEdgeToC EdgeFalling    = 3 
+lineEdgeToC EdgeBoth       = 4 
+lineEdgeToC (EdgeOther n)  = n
+
+cToLineEdge :: CInt -> LineEdge
+cToLineEdge 1 = EdgeNone
+cToLineEdge 2 = EdgeRising
+cToLineEdge 3 = EdgeFalling
+cToLineEdge 4 = EdgeBoth
+cToLineEdge n = EdgeOther n
+
+-- | LineBias translators
+lineBiasToC :: LineBias -> CInt
+lineBiasToC BiasAsIs      = 1 
+lineBiasToC BiasUnknown   = 2
+lineBiasToC BiasDisabled  = 3
+lineBiasToC BiasPullUp    = 4
+lineBiasToC BiasPullDown  = 5
+lineBiasToC (BiasOther n) = n
+
+cToLineBias :: CInt -> LineBias
+cToLineBias 1 = BiasAsIs
+cToLineBias 2 = BiasUnknown
+cToLineBias 3 = BiasDisabled
+cToLineBias 4 = BiasPullUp
+cToLineBias 5 = BiasPullDown
+cToLineBias n = BiasOther n
+
+-- | LineDrive translators
+lineDriveToC :: LineDrive -> CInt
+lineDriveToC PushPull       = 1
+lineDriveToC OpenDrain      = 2
+lineDriveToC OpenSource     = 3
+lineDriveToC (DriveOther n) = n
+
+cToLineDrive :: CInt -> LineDrive
+cToLineDrive 1 = PushPull
+cToLineDrive 2 = OpenDrain
+cToLineDrive 3 = OpenSource
+cToLineDrive n = DriveOther n
+
+-- | LineClock translators
+lineClockToC :: LineClock -> CInt
+lineClockToC Monotonic     = 1
+lineClockToC Realtime      = 2
+lineClockToC Hardware      = 3
+lineClockToC (ClockOther n) = n
+
+cToLineClock :: CInt -> LineClock
+cToLineClock 1 = Monotonic
+cToLineClock 2 = Realtime
+cToLineClock 3 = Hardware
+cToLineClock n = ClockOther n
+
 --------------------------------------------------------------------------------
--- 2. CHIP MANAGEMENT
+-- 1. CHIP MANAGEMENT
 --------------------------------------------------------------------------------
 
 -- | Open a GPIO chip by its filesystem path as ByteString.
@@ -132,7 +216,7 @@ requestLines (Chip chipPtr) maybeReqConf (LineConfig lineConfPtr) = do
   return $ LineRequest <$> res
 
 --------------------------------------------------------------------------------
--- 3. CHIP INFO
+-- 2. CHIP INFO
 --------------------------------------------------------------------------------
 
 -- | Free a chip info object and release all associated resources.
@@ -156,11 +240,10 @@ getChipLabel (ChipInfo chipInfo) = do
     else BS.packCString res
 
 -- | Get the number of lines exposed by the chip. 
-getChipNumLines :: ChipInfo -> IO Int 
+getChipNumLines :: ChipInfo -> IO Word 
 getChipNumLines (ChipInfo chipInfo) = do
   res <- c_gpiod_chip_info_get_num_lines chipInfo
   return $ fromIntegral res
-
 
 --------------------------------------------------------------------------------
 -- 4. LINE INFORMATION
@@ -205,37 +288,22 @@ getLineConsumer (LineInfo info) = do
     else Just <$> BS.packCString name
 
 -- | Get the direction setting of the line.
-getLineDirection :: LineInfo -> IO Direction
+getLineDirection :: LineInfo -> IO LineDirection
 getLineDirection (LineInfo info) = do
   dir <- c_gpiod_line_info_get_direction info
-  case dir of
-    1 -> return DirAsIs
-    2 -> return DirInput
-    3 -> return DirOutput
-    _ -> return DirAsIs
+  return $ cToLineDirection dir
 
 -- | Get the edge detection setting of the line.
-getLineEdgeDetection :: LineInfo -> IO Edge
+getLineEdgeDetection :: LineInfo -> IO LineEdge
 getLineEdgeDetection (LineInfo info) = do
   edge <- c_gpiod_line_info_get_edge_detection info
-  case edge of
-    1 -> return EdgeNone
-    2 -> return EdgeRising
-    3 -> return EdgeFalling
-    4 -> return EdgeBoth 
-    _ -> return EdgeNone
+  return $ cToLineEdge edge
 
 -- | Get the bias setting of the line.
-getLineBias :: LineInfo -> IO Bias
+getLineBias :: LineInfo -> IO LineBias
 getLineBias (LineInfo info) = do
   bias <- c_gpiod_line_info_get_bias info
-  case bias of
-    1 -> return BiasAsIs 
-    2 -> return BiasUnknown   
-    3 -> return BiasDisabled 
-    4 -> return BiasPullUp  
-    5 -> return BiasPullDown
-    _ -> return BiasUnknown
+  return $ cToLineBias bias
 
 -- | Check if the logical value of the line is inverted compared to physical.
 isLineActiveLow :: LineInfo -> IO Bool
@@ -244,54 +312,42 @@ isLineActiveLow (LineInfo info) = do
   return $ toBool res
 
 -- | Check if the line is debounced.
-isDebounced :: LineInfo -> IO Bool
-isDebounced (LineInfo info) = do
+isLineDebounced :: LineInfo -> IO Bool
+isLineDebounced (LineInfo info) = do
   res <- c_gpiod_line_info_is_debounced info
   return $ toBool res
 
 -- | Get the debounce period of the line, in microseconds.
-getDebouncePeriod :: LineInfo -> IO Word  
-getDebouncePeriod (LineInfo info) = do
+getLineDebouncePeriod :: LineInfo -> IO Word  
+getLineDebouncePeriod (LineInfo info) = do
   res <- c_gpiod_line_info_get_debounce_period_us info
   return $ fromIntegral res
+
+-- | Get the debounce period of the line, in microseconds.
+getLineEventClock :: LineInfo -> IO LineClock
+getLineEventClock (LineInfo info) = do
+  res <- c_gpiod_line_info_get_event_clock info
+  return $ cToLineClock res
 
 --------------------------------------------------------------------------------
 -- 5. LINE SETTINGS
 --------------------------------------------------------------------------------
 
-directionToC :: Direction -> CInt
-directionToC DirAsIs   = 1
-directionToC DirInput  = 2
-directionToC DirOutput = 3
-
-biasToC :: Bias -> CInt
-biasToC BiasAsIs     = 1 
-biasToC BiasUnknown  = 2
-biasToC BiasDisabled = 3
-biasToC BiasPullUp   = 4
-biasToC BiasPullDown = 5 
-
-edgeToC :: Edge -> CInt
-edgeToC EdgeNone    = 1 
-edgeToC EdgeRising  = 2
-edgeToC EdgeFalling = 3 
-edgeToC EdgeBoth    = 4 
-
 -- | Set the line direction in the settings.
-setDirection :: LineSettings -> Direction -> IO (Either Errno ())
+setDirection :: LineSettings -> LineDirection -> IO (Either Errno ())
 setDirection (LineSettings settings) dir =
-  checkMinusOne $ c_gpiod_line_settings_set_direction settings (directionToC dir)
+  checkMinusOne $ c_gpiod_line_settings_set_direction settings (lineDirectionToC dir)
 
 -- | Set the electrical bias in the settings.
-setBias :: LineSettings -> Bias -> IO (Either Errno ())
+setBias :: LineSettings -> LineBias -> IO (Either Errno ())
 setBias _ BiasUnknown = return (Left eINVAL)
 setBias (LineSettings settings) bias =
-  checkMinusOne $ c_gpiod_line_settings_set_bias settings (biasToC bias)
+  checkMinusOne $ c_gpiod_line_settings_set_bias settings (lineBiasToC bias)
 
 -- | Set the edge detection in the settings.
-setEdgeDetection :: LineSettings -> Edge -> IO (Either Errno ())
+setEdgeDetection :: LineSettings -> LineEdge -> IO (Either Errno ())
 setEdgeDetection (LineSettings settings) edge =
-  checkMinusOne $ c_gpiod_line_settings_set_edge_detection settings (edgeToC edge)
+  checkMinusOne $ c_gpiod_line_settings_set_edge_detection settings (lineEdgeToC edge)
 
 -- | Allocate and use line settings safely, guaranteeing their release.
 withLineSettings :: (LineSettings -> IO a) -> IO (Either Errno a)
@@ -325,10 +381,6 @@ withLineConfig action = do
 -- 7. LINE REQUESTS & I/O
 --------------------------------------------------------------------------------
 
-lineValueToC :: LineValue -> CInt
-lineValueToC LineActive   = 1
-lineValueToC LineInactive = 0
-lineValueToC LineError    = -1 
 
 
 -- | Get the logical value of a requested line.
@@ -337,10 +389,7 @@ getValue (LineRequest requestPtr) (LineOffset offset) = do
   lineValue <- c_gpiod_line_request_get_value requestPtr (fromIntegral offset)
   if lineValue == -1
     then Left <$> getErrno
-    else case lineValue of 
-      1 -> return $ Right LineActive 
-      0 -> return $ Right LineInactive 
-      _ -> return $ Right LineError  
+    else return $ Right (cToLineValue lineValue)
 
 -- | Set the logical value of a requested line.
 setValue :: LineRequest -> LineOffset -> LineValue -> IO (Either Errno ())
@@ -376,13 +425,14 @@ withLineRequest chip reqConf lineConf action = do
 --------------------------------------------------------------------------------
 
 edgeEventTypeToC :: EdgeEventType -> CInt
-edgeEventTypeToC EventRising  = 1 
-edgeEventTypeToC EventFalling = 2
+edgeEventTypeToC Rising          = 1 
+edgeEventTypeToC Falling         = 2
+edgeEventTypeToC (EventOther n)  = n
 
 cToEdgeEventType :: CInt -> EdgeEventType
-cToEdgeEventType 1 = EventRising
-cToEdgeEventType 2 = EventFalling
-cToEdgeEventType _ = error "Invalid CInt to translate to Edge Event Type"
+cToEdgeEventType 1 = Rising
+cToEdgeEventType 2 = Falling
+cToEdgeEventType n = EventOther n
 
 -- | Convert a ReadyRequest to a LineRequest.
 readyToLineRequest :: ReadyRequest -> LineRequest
@@ -412,10 +462,7 @@ getRawLineOffset (RawEdgeEvent event) = do
 getRawEventType :: RawEdgeEvent -> IO EdgeEventType
 getRawEventType (RawEdgeEvent event) = do
   cType <- c_gpiod_edge_event_get_event_type event
-  case cType of
-    1 -> return EventRising
-    2 -> return EventFalling
-    _ -> return EventRising
+  return $ cToEdgeEventType cType
 
 -- | Extract timestamp in nanoseconds from raw edge event pointer.
 getRawTimestampNs :: RawEdgeEvent -> IO TimestampNs

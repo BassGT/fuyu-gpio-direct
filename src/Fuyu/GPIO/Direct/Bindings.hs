@@ -8,7 +8,7 @@ import Fuyu.GPIO.Direct.Types
 import Data.Int (Int64)
 
 --------------------------------------------------------------------------------
--- 2. CHIP MANAGEMENT
+-- 1. CHIP MANAGEMENT
 --------------------------------------------------------------------------------
 
 foreign import ccall "gpiod_chip_open"
@@ -53,7 +53,7 @@ foreign import ccall "gpiod_line_request_release"
   c_gpiod_line_request_release :: Ptr CGpiodLineRequest -> IO ()
 
 --------------------------------------------------------------------------------
--- 3. CHIP INFO
+-- 2. CHIP INFO
 --------------------------------------------------------------------------------
 
 foreign import ccall "gpiod_chip_info_free"
@@ -110,6 +110,9 @@ foreign import ccall "gpiod_line_info_is_debounced"
 
 foreign import ccall "gpiod_line_info_get_debounce_period_us"
   c_gpiod_line_info_get_debounce_period_us :: Ptr CGpiodLineInfo -> IO CULong
+
+foreign import ccall "gpiod_line_info_get_event_clock"
+  c_gpiod_line_info_get_event_clock :: Ptr CGpiodLineInfo -> IO CInt
 
 --------------------------------------------------------------------------------
 -- 5. LINE SETTINGS
