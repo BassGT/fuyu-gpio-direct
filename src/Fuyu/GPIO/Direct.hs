@@ -39,121 +39,13 @@ checkMinusOne action = do
     else return $ Right ()
     
 --------------------------------------------------------------------------------
--- INTERNAL HASKELL TYPE TRADUCTORS TO CGPIOD TYPES 
+-- INTERNAL HELPERS
 --------------------------------------------------------------------------------
  
 timeoutNsToC :: TimeoutNs -> CLong
 timeoutNsToC Immediate        = 0
 timeoutNsToC Infinite         = -1
 timeoutNsToC (Nanoseconds ns) = fromIntegral ns
-
--- | LineValue translators
-lineValueToC :: LineValue -> CInt
-lineValueToC LineActive    = 1
-lineValueToC LineInactive  = 0
-lineValueToC LineError     = -1 
-lineValueToC (LineOther n) = n
-
-cToLineValue :: CInt -> LineValue
-cToLineValue 1    = LineActive
-cToLineValue 0    = LineInactive
-cToLineValue (-1) = LineError
-cToLineValue n    = LineOther n
-
--- | LineDirection translators
-lineDirectionToC :: LineDirection -> CInt
-lineDirectionToC DirAsIs      = 1
-lineDirectionToC DirInput     = 2
-lineDirectionToC DirOutput    = 3
-lineDirectionToC (DirOther n) = n
-
-cToLineDirection :: CInt -> LineDirection
-cToLineDirection 1 = DirAsIs
-cToLineDirection 2 = DirInput
-cToLineDirection 3 = DirOutput
-cToLineDirection n = DirOther n
-
--- | LineEdge translators
-lineEdgeToC :: LineEdge -> CInt
-lineEdgeToC EdgeNone       = 1 
-lineEdgeToC EdgeRising     = 2
-lineEdgeToC EdgeFalling    = 3 
-lineEdgeToC EdgeBoth       = 4 
-lineEdgeToC (EdgeOther n)  = n
-
-cToLineEdge :: CInt -> LineEdge
-cToLineEdge 1 = EdgeNone
-cToLineEdge 2 = EdgeRising
-cToLineEdge 3 = EdgeFalling
-cToLineEdge 4 = EdgeBoth
-cToLineEdge n = EdgeOther n
-
--- | LineBias translators
-lineBiasToC :: LineBias -> CInt
-lineBiasToC BiasAsIs      = 1 
-lineBiasToC BiasUnknown   = 2
-lineBiasToC BiasDisabled  = 3
-lineBiasToC BiasPullUp    = 4
-lineBiasToC BiasPullDown  = 5
-lineBiasToC (BiasOther n) = n
-
-cToLineBias :: CInt -> LineBias
-cToLineBias 1 = BiasAsIs
-cToLineBias 2 = BiasUnknown
-cToLineBias 3 = BiasDisabled
-cToLineBias 4 = BiasPullUp
-cToLineBias 5 = BiasPullDown
-cToLineBias n = BiasOther n
-
--- | LineDrive translators
-lineDriveToC :: LineDrive -> CInt
-lineDriveToC PushPull       = 1
-lineDriveToC OpenDrain      = 2
-lineDriveToC OpenSource     = 3
-lineDriveToC (DriveOther n) = n
-
-cToLineDrive :: CInt -> LineDrive
-cToLineDrive 1 = PushPull
-cToLineDrive 2 = OpenDrain
-cToLineDrive 3 = OpenSource
-cToLineDrive n = DriveOther n
-
--- | LineClock translators
-lineClockToC :: LineClock -> CInt
-lineClockToC Monotonic     = 1
-lineClockToC Realtime      = 2
-lineClockToC Hardware      = 3
-lineClockToC (ClockOther n) = n
-
-cToLineClock :: CInt -> LineClock
-cToLineClock 1 = Monotonic
-cToLineClock 2 = Realtime
-cToLineClock 3 = Hardware
-cToLineClock n = ClockOther n
-
--- | InfoEventType translators.
-cToInfoEventType :: CInt -> InfoEventType
-cToInfoEventType 1 = LineRequested
-cToInfoEventType 2 = LineReleased
-cToInfoEventType 3 = LineConfigChanged
-cToInfoEventType n = InfoEventOther n
-
-infoEventTypeToC :: InfoEventType -> CInt
-infoEventTypeToC LineRequested      = 1
-infoEventTypeToC LineReleased       = 2
-infoEventTypeToC LineConfigChanged  = 3
-infoEventTypeToC (InfoEventOther n) = n
-
--- | EdgeEventType translators.
-edgeEventTypeToC :: EdgeEventType -> CInt
-edgeEventTypeToC Rising          = 1 
-edgeEventTypeToC Falling         = 2
-edgeEventTypeToC (EventOther n)  = n
-
-cToEdgeEventType :: CInt -> EdgeEventType
-cToEdgeEventType 1 = Rising
-cToEdgeEventType 2 = Falling
-cToEdgeEventType n = EventOther n
 
 --------------------------------------------------------------------------------
 -- 1. CHIP MANAGEMENT
@@ -185,20 +77,20 @@ getChipPath (Chip ptr) = do
 
 -- | Get a snapshot of information about a line.
 getChipLineInfo :: Chip -> LineOffset -> IO (Either Errno LineInfo)
-getChipLineInfo (Chip ptr) (LineOffset offset) = do
-  res <- checkNull $ c_gpiod_chip_get_line_info ptr (fromIntegral offset)
+getChipLineInfo (Chip ptr) offset = do
+  res <- checkNull $ c_gpiod_chip_get_line_info ptr offset
   return $ LineInfo <$> res
 
 -- | Get a snapshot of the status of a line (LineOffset type) and start watching it for future changes.
 watchChipLineInfo :: Chip -> LineOffset -> IO (Either Errno LineInfo)
-watchChipLineInfo (Chip ptr) (LineOffset offset) = do
-  res <- checkNull $ c_gpiod_chip_watch_line_info ptr (fromIntegral offset)
+watchChipLineInfo (Chip ptr) offset = do
+  res <- checkNull $ c_gpiod_chip_watch_line_info ptr offset
   return $ LineInfo <$> res   
 
 -- | Stop watching a line for status changes.
 unwatchChipLineInfo :: Chip -> LineOffset -> IO (Either Errno ())
-unwatchChipLineInfo (Chip ptr) (LineOffset offset) = do
-  checkMinusOne $ c_gpiod_chip_unwatch_line_info ptr (fromIntegral offset)
+unwatchChipLineInfo (Chip ptr) offset = do
+  checkMinusOne $ c_gpiod_chip_unwatch_line_info ptr offset
 
 -- | Get the file descriptor associated with the chip.
 getChipFd :: Chip -> IO Fd
@@ -224,11 +116,10 @@ readChipInfoEvent (Chip ptr) = do
 -- | Map a line’s name to its offset (LineOffset type) within the chip.
 getChipLineOffsetFromName :: Chip -> ByteString -> IO (Either Errno LineOffset)
 getChipLineOffsetFromName (Chip ptr) name = do
-  res <- BS.useAsCString name $ \cStr -> c_gpiod_chip_get_line_offset_from_name  ptr cStr
+  res <- BS.useAsCString name $ \cStr -> c_gpiod_chip_get_line_offset_from_name ptr cStr
   if res == -1 
-  then Left <$> getErrno 
-  else return $ Right $ LineOffset (fromIntegral res)
-    
+    then Left <$> getErrno 
+    else return $ Right $ LineOffset (fromIntegral res)
 
 -- | Request a set of lines from the chip.
 requestLines :: Chip -> Maybe RequestConfig -> LineConfig -> IO (Either Errno LineRequest)
@@ -285,9 +176,7 @@ copyLineInfo (LineInfo info) = do
 
 -- | Get the offset of the line. 
 getLineInfoOffset :: LineInfo -> IO LineOffset
-getLineInfoOffset (LineInfo info) = do
-  offset <- c_gpiod_line_info_get_offset info
-  return $ LineOffset (fromIntegral offset)
+getLineInfoOffset (LineInfo info) = c_gpiod_line_info_get_offset info
 
 -- | Get the name of the line as ByteString. 
 getLineInfoName :: LineInfo -> IO (Maybe ByteString)
@@ -313,27 +202,19 @@ getLineInfoConsumer (LineInfo info) = do
 
 -- | Get the direction setting of the line.
 getLineInfoDirection :: LineInfo -> IO LineDirection
-getLineInfoDirection (LineInfo info) = do
-  dir <- c_gpiod_line_info_get_direction info
-  return $ cToLineDirection dir
+getLineInfoDirection (LineInfo info) = c_gpiod_line_info_get_direction info
 
 -- | Get the edge detection setting of the line.
 getLineInfoEdgeDetection :: LineInfo -> IO LineEdge
-getLineInfoEdgeDetection (LineInfo info) = do
-  edge <- c_gpiod_line_info_get_edge_detection info
-  return $ cToLineEdge edge
+getLineInfoEdgeDetection (LineInfo info) = c_gpiod_line_info_get_edge_detection info
 
 -- | Get the bias setting of the line.
 getLineInfoBias :: LineInfo -> IO LineBias
-getLineInfoBias (LineInfo info) = do
-  bias <- c_gpiod_line_info_get_bias info
-  return $ cToLineBias bias
+getLineInfoBias (LineInfo info) = c_gpiod_line_info_get_bias info
 
 -- | Get the drive setting of the line.
 getLineInfoDrive :: LineInfo -> IO LineDrive
-getLineInfoDrive (LineInfo info) = do
-  drive <- c_gpiod_line_info_get_drive info
-  return $ cToLineDrive drive
+getLineInfoDrive (LineInfo info) = c_gpiod_line_info_get_drive info
 
 -- | Check if the logical value of the line is inverted compared to physical.
 isLineInfoActiveLow :: LineInfo -> IO Bool
@@ -355,9 +236,7 @@ getLineInfoDebouncePeriod (LineInfo info) = do
 
 -- | Get the event clock of the line.
 getLineInfoEventClock :: LineInfo -> IO LineClock
-getLineInfoEventClock (LineInfo info) = do
-  res <- c_gpiod_line_info_get_event_clock info
-  return $ cToLineClock res
+getLineInfoEventClock (LineInfo info) = c_gpiod_line_info_get_event_clock info
 
 --------------------------------------------------------------------------------
 -- 5. LINE WATCH (INFO EVENT) 
@@ -368,19 +247,15 @@ infoEventFree (InfoEvent event) = c_gpiod_info_event_free event
 
 -- | Get the event type of the status change event.
 getInfoEventType :: InfoEvent -> IO InfoEventType
-getInfoEventType (InfoEvent event) = do
-  res <- c_gpiod_info_event_get_event_type event 
-  return $ cToInfoEventType res  
+getInfoEventType (InfoEvent event) = c_gpiod_info_event_get_event_type event 
 
 -- | Get the timestamp in nanoseconds of the event (readed from the monotonic clock). 
 getInfoEventTimestamp :: InfoEvent -> IO TimestampNs 
-getInfoEventTimestamp (InfoEvent event) = 
-  TimestampNs <$> c_gpiod_info_event_get_timestamp_ns event
+getInfoEventTimestamp (InfoEvent event) = c_gpiod_info_event_get_timestamp_ns event
 
 -- | Get the snapshot of line-info associated with the event.
 getLineInfoOfInfoEvent :: InfoEvent -> IO LineInfo
-getLineInfoOfInfoEvent (InfoEvent event) =
-  LineInfo <$> c_gpiod_info_event_get_line_info event
+getLineInfoOfInfoEvent (InfoEvent event) = LineInfo <$> c_gpiod_info_event_get_line_info event
   
 --------------------------------------------------------------------------------
 -- 6. LINE SETTINGS
@@ -408,57 +283,47 @@ copyLineSettings (LineSettings settings) = do
 -- | Set the line direction in the settings.
 setLineSettingsDirection :: LineSettings -> LineDirection -> IO (Either Errno ())
 setLineSettingsDirection (LineSettings settings) dir =
-  checkMinusOne $ c_gpiod_line_settings_set_direction settings (lineDirectionToC dir)
+  checkMinusOne $ c_gpiod_line_settings_set_direction settings dir
   
 -- | Get the line direction in the settings.
 getLineSettingsDirection :: LineSettings -> IO LineDirection
-getLineSettingsDirection (LineSettings settings) = do
-  res <- c_gpiod_line_settings_get_direction settings
-  return $ cToLineDirection res
+getLineSettingsDirection (LineSettings settings) = c_gpiod_line_settings_get_direction settings
 
 -- | Set the edge detection in the settings.
 setLineSettingsEdgeDetection :: LineSettings -> LineEdge -> IO (Either Errno ())
 setLineSettingsEdgeDetection (LineSettings settings) edge =
-  checkMinusOne $ c_gpiod_line_settings_set_edge_detection settings (lineEdgeToC edge)
+  checkMinusOne $ c_gpiod_line_settings_set_edge_detection settings edge
 
 -- | Get the edge detection in the settings.
 getLineSettingsEdgeDetection :: LineSettings -> IO LineEdge
-getLineSettingsEdgeDetection (LineSettings settings) = do
-  res <- c_gpiod_line_settings_get_edge_detection settings
-  return $ cToLineEdge res
+getLineSettingsEdgeDetection (LineSettings settings) = c_gpiod_line_settings_get_edge_detection settings
 
 -- | Set the electrical bias in the settings.
 setLineSettingsBias :: LineSettings -> LineBias -> IO (Either Errno ())
 setLineSettingsBias (LineSettings settings) bias =
-  checkMinusOne $ c_gpiod_line_settings_set_bias settings (lineBiasToC bias)
+  checkMinusOne $ c_gpiod_line_settings_set_bias settings bias
 
 -- | Get the electrical bias in the settings.
 getLineSettingsBias :: LineSettings -> IO LineBias
-getLineSettingsBias (LineSettings settings) = do
-  res <- c_gpiod_line_settings_get_bias settings
-  return $ cToLineBias res
+getLineSettingsBias (LineSettings settings) = c_gpiod_line_settings_get_bias settings
 
 -- | Set a drive setting in the settings.
 setLineSettingsDrive :: LineSettings -> LineDrive -> IO (Either Errno ())
 setLineSettingsDrive (LineSettings settings) drive =
-  checkMinusOne $ c_gpiod_line_settings_set_drive settings (lineDriveToC drive)
+  checkMinusOne $ c_gpiod_line_settings_set_drive settings drive
 
 -- | Get the drive in the settings.
 getLineSettingsDrive :: LineSettings -> IO LineDrive
-getLineSettingsDrive (LineSettings settings) = do
-  res <- c_gpiod_line_settings_get_drive settings
-  return $ cToLineDrive res
+getLineSettingsDrive (LineSettings settings) = c_gpiod_line_settings_get_drive settings
 
 -- | Set event clock in the settings.
 setLineSettingsEventClock :: LineSettings -> LineClock -> IO (Either Errno ())
 setLineSettingsEventClock (LineSettings settings) clock =
-  checkMinusOne $ c_gpiod_line_settings_set_event_clock settings (lineClockToC clock)
+  checkMinusOne $ c_gpiod_line_settings_set_event_clock settings clock
 
 -- | Get event clock in the settings.
 getLineSettingsEventClock :: LineSettings -> IO LineClock
-getLineSettingsEventClock (LineSettings settings) = do
-  res <- c_gpiod_line_settings_get_event_clock settings
-  return $ cToLineClock res
+getLineSettingsEventClock (LineSettings settings) = c_gpiod_line_settings_get_event_clock settings
 
 -- | Set active-low setting.
 setLineSettingsActiveLow :: LineSettings -> Bool -> IO ()
@@ -485,62 +350,59 @@ getLineSettingsDebouncePeriodUs (LineSettings settings) = do
 -- | Set output value in the settings.
 setLineSettingsOutputValue :: LineSettings -> LineValue -> IO (Either Errno ())
 setLineSettingsOutputValue (LineSettings settings) val =
-  checkMinusOne $ c_gpiod_line_settings_set_output_value settings (lineValueToC val)
+  checkMinusOne $ c_gpiod_line_settings_set_output_value settings val
 
 -- | Get output value in the settings.
 getLineSettingsOutputValue :: LineSettings -> IO LineValue
-getLineSettingsOutputValue (LineSettings settings) = do
-  res <- c_gpiod_line_settings_get_output_value settings
-  return $ cToLineValue res
-
-
--- | Allocate and use line settings safely, guaranteeing their release.
-withLineSettings :: (LineSettings -> IO a) -> IO (Either Errno a)
-withLineSettings action = do
-  res <- checkNull c_gpiod_line_settings_new
-  case res of
-    Left err -> return (Left err)
-    Right ptr -> bracket (return $ LineSettings ptr) (\(LineSettings s) -> c_gpiod_line_settings_free s) (fmap Right . action)
+getLineSettingsOutputValue (LineSettings settings) = c_gpiod_line_settings_get_output_value settings
 
 --------------------------------------------------------------------------------
 -- 7. LINE CONFIGURATION
 --------------------------------------------------------------------------------
+-- | Create a new line config object.
+newLineConfig :: IO (Either Errno LineConfig)
+newLineConfig = do  
+  res <- checkNull c_gpiod_line_config_new 
+  return $ LineConfig <$> res
+
+-- | Free the line config object and release all associated resources. 
+freeLineConfig :: LineConfig -> IO ()
+freeLineConfig (LineConfig config) = c_gpiod_line_config_free config
+
+-- | Resets the entire configuration stored in the (config) object. This is useful if the user wants to reuse the object without reallocating it. 
+resetLineConfig :: LineConfig -> IO ()
+resetLineConfig (LineConfig config) = c_gpiod_line_config_reset config
 
 -- | Add specific settings to a group of offsets in the configuration.
 addConfigToLineSettings :: LineConfig -> [LineOffset] -> LineSettings -> IO (Either Errno ())
 addConfigToLineSettings (LineConfig config) pins (LineSettings settings) = do
   let size = fromIntegral (length pins)
-  checkMinusOne $
-    withArray (map (\(LineOffset p) -> fromIntegral p) pins) $ \ptr -> 
-      c_gpiod_line_config_add_line_settings config ptr size settings
+  checkMinusOne $ withArray pins $ \ptr -> 
+    c_gpiod_line_config_add_line_settings config ptr size settings
 
--- | Allocate and use a line configuration safely, guaranteeing its release.
-withLineConfig :: (LineConfig -> IO a) -> IO (Either Errno a)
-withLineConfig action = do
-  res <- checkNull c_gpiod_line_config_new
-  case res of
-    Left err -> return (Left err)
-    Right ptr -> bracket (return $ LineConfig ptr) (\(LineConfig c) -> c_gpiod_line_config_free c) (fmap Right . action)
+-- | Get line settings for offset.
+getLineConfigSettings :: LineConfig -> LineOffset -> IO (Either Errno LineSettings)
+getLineConfigSettings (LineConfig config) offset = do
+  res <- checkNull $ c_gpiod_line_config_get_line_settings config offset
+  return $ LineSettings <$> res 
 
 --------------------------------------------------------------------------------
 -- 8. LINE REQUESTS & I/O
 --------------------------------------------------------------------------------
 
-
-
 -- | Get the logical value of a requested line.
 getValue :: LineRequest -> LineOffset -> IO (Either Errno LineValue)
-getValue (LineRequest requestPtr) (LineOffset offset) = do
-  lineValue <- c_gpiod_line_request_get_value requestPtr (fromIntegral offset)
-  if lineValue == -1
+getValue (LineRequest requestPtr) offset = do
+  lineValue <- c_gpiod_line_request_get_value requestPtr offset
+  if lineValue == LineError
     then Left <$> getErrno
-    else return $ Right (cToLineValue lineValue)
+    else return $ Right lineValue
 
 -- | Set the logical value of a requested line.
 setValue :: LineRequest -> LineOffset -> LineValue -> IO (Either Errno ())
 setValue _ _ LineError = return (Left eINVAL)
-setValue (LineRequest requestPtr) (LineOffset offset) value =
-  checkMinusOne $ c_gpiod_line_request_set_value requestPtr (fromIntegral offset) (lineValueToC value)
+setValue (LineRequest requestPtr) offset value =
+  checkMinusOne $ c_gpiod_line_request_set_value requestPtr offset value
 
 -- | Close a request and release requested lines.
 closeLineRequest :: LineRequest -> IO ()
@@ -557,14 +419,6 @@ waitEdgeEvents (LineRequest requestPtr) timeoutNs = do
       0 -> return $ Right Timeout
       _ -> return $ Right Timeout
 
--- | Allocate and use requested lines safely, guaranteeing their release.
-withLineRequest :: Chip -> Maybe RequestConfig -> LineConfig -> (LineRequest -> IO a) -> IO (Either Errno a)
-withLineRequest chip reqConf lineConf action = do
-  eReq <- requestLines chip reqConf lineConf
-  case eReq of
-    Left err -> return (Left err)
-    Right req -> bracket (return req) closeLineRequest (fmap Right . action)
-
 --------------------------------------------------------------------------------
 -- 8. EDGE EVENTS & EVENT BUFFER
 --------------------------------------------------------------------------------
@@ -572,34 +426,28 @@ withLineRequest chip reqConf lineConf action = do
 -- | Read raw edge events into buffer.
 readEventsIntoBuffer :: LineRequest -> EventBuffer -> IO (Either Errno Int)
 readEventsIntoBuffer (LineRequest reqPtr) (EventBuffer buffer (EventBufferCapacity maxEvents)) = do
-  count <- c_gpiod_line_request_read_edge_events reqPtr buffer (fromIntegral maxEvents)
+  count <- c_gpiod_line_request_read_edge_events reqPtr buffer maxEvents
   if count == -1
     then Left <$> getErrno
     else return $ Right (fromIntegral count)
 
 -- | Retrieve raw edge event pointer from buffer.
 getRawEventFromBuffer :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
-getRawEventFromBuffer (EventBuffer buffer _) (BufferIndex idx) = do
-  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer (fromIntegral idx))
+getRawEventFromBuffer (EventBuffer buffer _) idx = do
+  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer idx)
   return $ RawEdgeEvent <$> res
 
 -- | Extract line offset from raw edge event pointer.
 getRawLineOffset :: RawEdgeEvent -> IO LineOffset
-getRawLineOffset (RawEdgeEvent event) = do
-  offset <- c_gpiod_edge_event_get_line_offset event
-  return $ LineOffset (fromIntegral offset)
+getRawLineOffset (RawEdgeEvent event) = c_gpiod_edge_event_get_line_offset event
 
 -- | Extract event type from raw edge event pointer.
 getRawEventType :: RawEdgeEvent -> IO EdgeEventType
-getRawEventType (RawEdgeEvent event) = do
-  cType <- c_gpiod_edge_event_get_event_type event
-  return $ cToEdgeEventType cType
+getRawEventType (RawEdgeEvent event) = c_gpiod_edge_event_get_event_type event
 
 -- | Extract timestamp in nanoseconds from raw edge event pointer.
 getRawTimestampNs :: RawEdgeEvent -> IO TimestampNs
-getRawTimestampNs (RawEdgeEvent event) = do
-  ns <- c_gpiod_edge_event_get_timestamp_ns event
-  return $ TimestampNs (fromIntegral ns)
+getRawTimestampNs (RawEdgeEvent event) = c_gpiod_edge_event_get_timestamp_ns event
 
 -- | Parse RawEdgeEvent into pure EdgeEvent.
 rawToEdgeEvent :: RawEdgeEvent -> IO EdgeEvent
@@ -624,28 +472,3 @@ readEdgeEvents req buf = do
         Just ne -> return (Right ne)
         Nothing -> return (Left eINVAL)
 
--- | Process raw edge events directly in buffer using callback.
-withRawEdgeEvents :: LineRequest -> EventBuffer -> (RawEdgeEvent -> IO a) -> IO (Either Errno (NonEmpty a))
-withRawEdgeEvents req buf action = do
-  eCount <- readEventsIntoBuffer req buf
-  case eCount of
-    Left err -> return (Left err)
-    Right count -> do
-      results <- forM [0 .. (count - 1)] $ \idx -> do
-        eRaw <- getRawEventFromBuffer buf (BufferIndex (fromIntegral idx))
-        case eRaw of
-          Left _ -> error "withRawEdgeEvents: invalid raw event index"
-          Right raw -> action raw
-      case NE.nonEmpty results of
-        Just ne -> return (Right ne)
-        Nothing -> return (Left eINVAL)
-
--- | Run a computation with temporary event buffer, guaranteeing release.
-withEdgeEventBuffer :: EventBufferCapacity -> (EventBuffer -> IO a) -> IO (Either Errno a)
-withEdgeEventBuffer (EventBufferCapacity capacity) action = do
-  res <- checkNull (c_gpiod_edge_event_buffer_new (fromIntegral capacity))
-  case res of
-    Left err -> return (Left err)
-    Right bufferPtr ->
-      let buf = EventBuffer bufferPtr (EventBufferCapacity capacity)
-      in bracket (return buf) (\(EventBuffer b _) -> c_gpiod_edge_event_buffer_free b) (fmap Right . action)

@@ -1,9 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Fuyu.GPIO.Direct.Types where
 
 import Foreign.Ptr (Ptr)
-import Foreign.C.Types (CInt(..))
-import Data.Word (Word64)
+import Foreign.Storable (Storable)
+import Foreign.C.Types (CInt(..), CUInt(..), CULong(..), CSize(..))
 
 --------------------------------------------------------------------------------
 -- CORE TYPES & WRAPPERS
@@ -45,12 +46,12 @@ newtype RawEdgeEvent = RawEdgeEvent (Ptr CGpiodEdgeEvent)
   deriving (Eq, Ord, Show)
 
 -- | Safety wrappers for type-safe APIs.
-newtype LineOffset = LineOffset Word
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral)
-newtype EventBufferCapacity = EventBufferCapacity Word
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral)
-newtype BufferIndex = BufferIndex Word64
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral)
+newtype LineOffset = LineOffset CUInt
+  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
+newtype EventBufferCapacity = EventBufferCapacity CSize
+  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
+newtype BufferIndex = BufferIndex CULong
+  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
 
 --------------------------------------------------------------------------------
 -- LINE DEFINITIONS TYPES
@@ -58,66 +59,134 @@ newtype BufferIndex = BufferIndex Word64
 
 -- | Gpiod line definitions (C enum) as Haskell Types, see [libgpiod docs](https://libgpiod.readthedocs.io/en/master/core_line_defs.html#).
 
--- | ADT representing the logical line state. 
-data LineValue = LineActive   -- ^ Line is logically active (1 as C int).
-               | LineInactive -- ^ Line is logically inactive (0 as C int). 
-               | LineError    -- ^ Returned to indicate an error when reading the value (-1 as C int).
-               | LineOther CInt -- ^ Fallback constructor for unmapped C int values.
-               deriving (Eq, Ord, Show, Read)
+-- | Newtype representing the logical line state. 
+newtype LineValue = LineValue CInt
+  deriving (Eq, Ord, Show, Read, Storable)
 
--- | ADT representing direction settings.  
-data LineDirection = DirAsIs   -- ^ Request the line(s), but don't change direction (1 as C int).  
-                   | DirInput  -- ^ For reading the value of an externally driven GPIO line (2 as C int).
-                   | DirOutput -- ^ For driving the GPIO line (3 as C int).
-                   | DirOther CInt -- ^ Fallback constructor for unmapped C int values.
-                   deriving (Eq, Ord, Show, Read)
+pattern LineActive :: LineValue
+pattern LineActive = LineValue 1
 
--- | ADT representing edge detection settings. 
-data LineEdge = EdgeNone    -- ^ Line edge detection is disabled (1 as C int). 
-              | EdgeRising  -- ^ Line detects rising edge events (2 as C int). 
-              | EdgeFalling -- ^ Line detects falling edge events (3 as C int). 
-              | EdgeBoth    -- ^ Line detects both rising and falling edge events (4 as C int). 
-              | EdgeOther CInt -- ^ Fallback constructor for unmapped C int values.
-              deriving (Eq, Ord, Show, Read)
+pattern LineInactive :: LineValue
+pattern LineInactive = LineValue 0
 
--- | ADT representing internal line bias settings. 
-data LineBias = BiasAsIs     -- ^ Don't change the bias setting when applying line config (1 as C int). 
-              | BiasUnknown  -- ^ The internal bias state is unknown (2 as C int). 
-              | BiasDisabled -- ^ The internal bias is disabled (3 as C int). 
-              | BiasPullUp   -- ^ The internal pull-up bias is enabled (4 as C int).
-              | BiasPullDown -- ^ The internal pull-down bias is enabled (5 as C int). 
-              | BiasOther CInt -- ^ Fallback constructor for unmapped C int values.
-              deriving (Eq, Ord, Show, Read)
+pattern LineError :: LineValue
+pattern LineError = LineValue (-1)
 
--- | ADT representing output drive settings.
-data LineDrive = PushPull   -- ^ Drive setting is push-pull (1 as C int). 
-               | OpenDrain  -- ^ Line output is open-drain (2 as C int). 
-               | OpenSource -- ^ Line output is open-source (3 as C int). 
-               | DriveOther CInt -- ^ Fallback constructor for unmapped C int values.
-               deriving (Eq, Ord, Show, Read)
+{-# COMPLETE LineActive, LineInactive, LineError, LineValue #-}
 
--- | ADT representing line clock settings. 
-data LineClock = Monotonic -- ^ Line uses the monotonic clock for edge event timestamps (1 as C int).
-               | Realtime  -- ^ Line uses the realtime clock for edge event timestamps (2 as C int).
-               | Hardware  -- ^ Line uses the hardware timestamp engine for event timestamps (3 as C int). 
-               | ClockOther CInt -- ^ Fallback constructor for unmapped C int values.
-               deriving (Eq, Ord, Show, Read)
+-- | Newtype representing direction settings.  
+newtype LineDirection = LineDirection CInt
+  deriving (Eq, Ord, Show, Read, Storable)
+
+pattern DirAsIs :: LineDirection
+pattern DirAsIs = LineDirection 1
+
+pattern DirInput :: LineDirection
+pattern DirInput = LineDirection 2
+
+pattern DirOutput :: LineDirection
+pattern DirOutput = LineDirection 3
+
+{-# COMPLETE DirAsIs, DirInput, DirOutput, LineDirection #-}
+
+-- | Newtype representing edge detection settings. 
+newtype LineEdge = LineEdge CInt
+  deriving (Eq, Ord, Show, Read, Storable)
+
+pattern EdgeNone :: LineEdge
+pattern EdgeNone = LineEdge 1
+
+pattern EdgeRising :: LineEdge
+pattern EdgeRising = LineEdge 2
+
+pattern EdgeFalling :: LineEdge
+pattern EdgeFalling = LineEdge 3
+
+pattern EdgeBoth :: LineEdge
+pattern EdgeBoth = LineEdge 4
+
+{-# COMPLETE EdgeNone, EdgeRising, EdgeFalling, EdgeBoth, LineEdge #-}
+
+-- | Newtype representing internal line bias settings. 
+newtype LineBias = LineBias CInt
+  deriving (Eq, Ord, Show, Read, Storable)
+
+pattern BiasAsIs :: LineBias
+pattern BiasAsIs = LineBias 1
+
+pattern BiasUnknown :: LineBias
+pattern BiasUnknown = LineBias 2
+
+pattern BiasDisabled :: LineBias
+pattern BiasDisabled = LineBias 3
+
+pattern BiasPullUp :: LineBias
+pattern BiasPullUp = LineBias 4
+
+pattern BiasPullDown :: LineBias
+pattern BiasPullDown = LineBias 5
+
+{-# COMPLETE BiasAsIs, BiasUnknown, BiasDisabled, BiasPullUp, BiasPullDown, LineBias #-}
+
+-- | Newtype representing output drive settings.
+newtype LineDrive = LineDrive CInt
+  deriving (Eq, Ord, Show, Read, Storable)
+
+pattern PushPull :: LineDrive
+pattern PushPull = LineDrive 1
+
+pattern OpenDrain :: LineDrive
+pattern OpenDrain = LineDrive 2
+
+pattern OpenSource :: LineDrive
+pattern OpenSource = LineDrive 3
+
+{-# COMPLETE PushPull, OpenDrain, OpenSource, LineDrive #-}
+
+-- | Newtype representing line clock settings. 
+newtype LineClock = LineClock CInt
+  deriving (Eq, Ord, Show, Read, Storable)
+
+pattern Monotonic :: LineClock
+pattern Monotonic = LineClock 1
+
+pattern Realtime :: LineClock
+pattern Realtime = LineClock 2
+
+pattern Hardware :: LineClock
+pattern Hardware = LineClock 3
+
+{-# COMPLETE Monotonic, Realtime, Hardware, LineClock #-}
 
 --------------------------------------------------------------------------------
 -- OTHER LIBGPIOD DEFINITIONS TYPES
 --------------------------------------------------------------------------------
-data InfoEventType = LineRequested     -- ^ Line has been requested (1 as C int). 
-                   | LineReleased      -- ^ Line has been released (2 as C int).
-                   | LineConfigChanged -- ^ Line configuration has changed (3 as C int).
-                   | InfoEventOther CInt -- ^ Fallback constructor for unmapped C int values. 
-                   deriving (Eq, Ord, Show, Read)
+newtype InfoEventType = InfoEventType CInt
+  deriving (Eq, Ord, Show, Read, Storable)
 
--- | ADT representing the type of edge event detected.
-data EdgeEventType  = Rising  -- ^ Event triggered on a rising edge (1 as C int).
-                    | Falling -- ^ Event triggered on a falling edge (2 as C int).
-                    | EventOther CInt -- ^ Fallback constructor for unmapped C int values.
-                    deriving (Eq, Ord, Show, Read)
-  
+pattern LineRequested :: InfoEventType
+pattern LineRequested = InfoEventType 1
+
+pattern LineReleased :: InfoEventType
+pattern LineReleased = InfoEventType 2
+
+pattern LineConfigChanged :: InfoEventType
+pattern LineConfigChanged = InfoEventType 3
+
+{-# COMPLETE LineRequested, LineReleased, LineConfigChanged, InfoEventType #-}
+
+-- | Newtype representing the type of edge event detected.
+newtype EdgeEventType = EdgeEventType CInt
+  deriving (Eq, Ord, Show, Read, Storable)
+
+pattern Rising :: EdgeEventType
+pattern Rising = EdgeEventType 1
+
+pattern Falling :: EdgeEventType
+pattern Falling = EdgeEventType 2
+
+{-# COMPLETE Rising, Falling, EdgeEventType #-}
+
 --------------------------------------------------------------------------------
 -- NATIVE HELPER TYPES 
 --------------------------------------------------------------------------------
@@ -126,17 +195,16 @@ data WaitResult
   | EventReady 
   deriving (Eq, Ord, Show, Read)
 
-data TimeoutNs = Nanoseconds Word64
+data TimeoutNs = Nanoseconds CULong
                | Immediate
                | Infinite 
                deriving (Eq, Ord, Show, Read)
 
-newtype TimestampNs = TimestampNs Word64
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral)
+newtype TimestampNs = TimestampNs CULong
+  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
 
 data EdgeEvent = EdgeEvent 
   { eventLineOffset :: LineOffset
   , edgeType        :: EdgeEventType
   , timestamp       :: TimestampNs 
   } deriving (Eq, Ord, Show, Read)
-
