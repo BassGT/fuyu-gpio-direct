@@ -50,9 +50,6 @@ foreign import ccall "gpiod_chip_request_lines"
 foreign import ccall "gpiod_chip_get_line_offset_from_name"
   c_gpiod_chip_get_line_offset_from_name :: Ptr CGpiodChip -> CString -> IO CInt
   
-foreign import ccall "gpiod_line_request_release"
-  c_gpiod_line_request_release :: Ptr CGpiodLineRequest -> IO ()
-
 --------------------------------------------------------------------------------
 -- 2. CHIP INFO
 --------------------------------------------------------------------------------
@@ -228,11 +225,50 @@ foreign import ccall "gpiod_line_config_get_configured_offsets"
   c_gpiod_line_config_get_configured_offsets :: Ptr CGpiodLineConfig -> Ptr LineOffset -> CSize -> IO CSize
 
 --------------------------------------------------------------------------------
--- 8. LINE REQUESTS & I/O
+-- 8. REQUESTS CONFIG
 --------------------------------------------------------------------------------
+foreign import ccall "gpiod_request_config_new"
+  c_gpiod_request_config_new :: IO (Ptr CGpiodRequestConfig)
 
+foreign import ccall "gpiod_request_config_free"
+  c_gpiod_request_config_free :: Ptr CGpiodRequestConfig -> IO()
+
+foreign import ccall "gpiod_request_config_set_consumer"
+  c_gpiod_request_config_set_consumer :: Ptr CGpiodRequestConfig -> CString -> IO()
+
+foreign import ccall "gpiod_request_config_get_consumer"
+  c_gpiod_request_config_get_consumer :: Ptr CGpiodRequestConfig -> IO CString
+
+foreign import ccall "gpiod_request_config_set_event_buffer_size"
+  c_gpiod_request_config_set_event_buffer_size :: Ptr CGpiodRequestConfig -> CSize -> IO()   
+  
+foreign import ccall "gpiod_request_config_get_event_buffer_size"
+  c_gpiod_request_config_get_event_buffer_size :: Ptr CGpiodRequestConfig -> IO CSize  
+  
+--------------------------------------------------------------------------------
+-- 9. LINE REQUEST
+--------------------------------------------------------------------------------
+foreign import ccall "gpiod_line_request_release"
+  c_gpiod_line_request_release :: Ptr CGpiodLineRequest -> IO()
+
+foreign import ccall "gpiod_line_request_get_chip_name"
+  c_gpiod_line_request_get_chip_name :: Ptr CGpiodLineRequest -> IO CString
+
+foreign import ccall "gpiod_line_request_get_num_requested_lines"
+  c_gpiod_line_request_get_num_requested_lines :: Ptr CGpiodLineRequest -> IO CSize
+     
+foreign import ccall "gpiod_line_request_get_requested_offsets"
+  c_gpiod_line_request_get_requested_offsets :: Ptr CGpiodLineRequest -> Ptr LineOffset -> CSize -> IO CSize
+  
 foreign import ccall "gpiod_line_request_get_value"
   c_gpiod_line_request_get_value :: Ptr CGpiodLineRequest -> LineOffset -> IO LineValue 
+
+foreign import ccall "gpiod_line_request_get_values_subset"
+  c_gpiod_line_request_get_values_subset :: Ptr CGpiodLineRequest
+                                         -> CSize
+                                         -> Ptr CUInt
+                                         -> Ptr CInt
+                                         -> IO CInt
 
 foreign import ccall "gpiod_line_request_set_value"
   c_gpiod_line_request_set_value :: Ptr CGpiodLineRequest -> LineOffset -> LineValue -> IO CInt 
@@ -244,7 +280,7 @@ foreign import ccall "gpiod_line_request_read_edge_events"
   c_gpiod_line_request_read_edge_events :: Ptr CGpiodLineRequest -> Ptr CGpiodEdgeEventBuffer -> CSize -> IO CInt
 
 --------------------------------------------------------------------------------
--- 8. EDGE EVENTS & EVENT BUFFER
+-- 10. EDGE EVENTS & EVENT BUFFER
 --------------------------------------------------------------------------------
 
 foreign import ccall "gpiod_edge_event_buffer_new"

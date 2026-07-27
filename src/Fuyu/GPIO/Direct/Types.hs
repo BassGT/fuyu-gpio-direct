@@ -53,6 +53,15 @@ newtype EventBufferCapacity = EventBufferCapacity CSize
 newtype BufferIndex = BufferIndex CULong
   deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
 
+-- | Safely construct an 'EventBufferCapacity'.
+--
+-- Clamps 0 to a default of 64, and caps maximum capacity at 1024.
+eventBufferCapacity :: Word -> EventBufferCapacity
+eventBufferCapacity 0 = EventBufferCapacity 64
+eventBufferCapacity n
+  | n > 1024  = EventBufferCapacity 1024
+  | otherwise = EventBufferCapacity (fromIntegral n)
+
 --------------------------------------------------------------------------------
 -- LINE DEFINITIONS TYPES
 --------------------------------------------------------------------------------
@@ -190,6 +199,9 @@ pattern Falling = EdgeEventType 2
 --------------------------------------------------------------------------------
 -- NATIVE HELPER TYPES 
 --------------------------------------------------------------------------------
+newtype EventBufferSize = EventBufferSize CSize 
+  deriving (Eq, Ord, Show, Read, Storable)
+
 data WaitResult 
   = Timeout
   | EventReady 
