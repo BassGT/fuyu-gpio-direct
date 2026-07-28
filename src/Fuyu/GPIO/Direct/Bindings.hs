@@ -303,29 +303,48 @@ foreign import ccall "gpiod_line_request_read_edge_events"
 -- 10. EDGE EVENTS & EVENT BUFFER
 --------------------------------------------------------------------------------
 
-foreign import ccall "gpiod_edge_event_buffer_new"
-  c_gpiod_edge_event_buffer_new :: EventBufferCapacity -> IO (Ptr CGpiodEdgeEventBuffer)
   
-foreign import ccall "gpiod_edge_event_buffer_free"
-  c_gpiod_edge_event_buffer_free :: Ptr CGpiodEdgeEventBuffer -> IO ()
-
-foreign import ccall "gpiod_edge_event_buffer_get_capacity"
-  c_gpiod_edge_event_buffer_get_capacity :: Ptr CGpiodEdgeEventBuffer -> IO CSize
-
-foreign import ccall "gpiod_edge_event_buffer_get_event"
-  c_gpiod_edge_event_buffer_get_event :: Ptr CGpiodEdgeEventBuffer -> BufferIndex -> IO (Ptr CGpiodEdgeEvent)
+foreign import ccall "gpiod_edge_event_free"
+  c_gpiod_edge_event_free :: Ptr CGpiodEdgeEvent -> IO ()
 
 foreign import ccall "gpiod_edge_event_copy"
   c_gpiod_edge_event_copy :: Ptr CGpiodEdgeEvent -> IO (Ptr CGpiodEdgeEvent)
-
-foreign import ccall "gpiod_edge_event_free"
-  c_gpiod_edge_event_free :: Ptr CGpiodEdgeEvent -> IO ()
 
 foreign import ccall "gpiod_edge_event_get_event_type"
   c_gpiod_edge_event_get_event_type :: Ptr CGpiodEdgeEvent -> IO EdgeEventType
 
 foreign import ccall "gpiod_edge_event_get_timestamp_ns" 
   c_gpiod_edge_event_get_timestamp_ns :: Ptr CGpiodEdgeEvent -> IO TimestampNs 
-
+  
 foreign import ccall "gpiod_edge_event_get_line_offset"
   c_gpiod_edge_event_get_line_offset :: Ptr CGpiodEdgeEvent -> IO LineOffset
+  
+foreign import ccall "gpiod_edge_event_get_global_seqno"
+  c_gpiod_edge_event_get_global_seqno :: Ptr CGpiodEdgeEvent -> IO CULong 
+  
+foreign import ccall "gpiod_edge_event_get_line_seqno"
+  c_gpiod_edge_event_get_line_seqno :: Ptr CGpiodEdgeEvent -> IO LineOffset 
+
+foreign import ccall "gpiod_edge_event_buffer_new"
+  c_gpiod_edge_event_buffer_new :: EventBufferCapacity -> IO (Ptr CGpiodEdgeEventBuffer)
+  
+foreign import ccall "gpiod_edge_event_buffer_get_capacity"
+  c_gpiod_edge_event_buffer_get_capacity :: Ptr CGpiodEdgeEventBuffer -> IO CSize
+
+foreign import ccall "gpiod_edge_event_buffer_free"
+  c_gpiod_edge_event_buffer_free :: Ptr CGpiodEdgeEventBuffer -> IO ()
+
+foreign import ccall "gpiod_edge_event_buffer_get_event"
+  c_gpiod_edge_event_buffer_get_event :: Ptr CGpiodEdgeEventBuffer -> BufferIndex -> IO (Ptr CGpiodEdgeEvent)
+
+foreign import ccall "gpiod_edge_event_buffer_get_num_events"
+  c_gpiod_edge_event_buffer_get_num_events :: Ptr CGpiodEdgeEventBuffer -> IO CSize 
+
+--------------------------------------------------------------------------------
+-- 11. EDGE EVENTS & EVENT BUFFER
+--------------------------------------------------------------------------------
+foreign import ccall "gpiod_is_gpiochip_device"
+  c_gpiod_is_gpiochip_device :: CString -> IO CBool
+
+foreign import ccall "gpiod_api_version"
+  c_gpiod_api_version :: IO CString

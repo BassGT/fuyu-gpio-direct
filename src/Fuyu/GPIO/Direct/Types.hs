@@ -16,7 +16,6 @@ data CGpiodChipInfo
 data CGpiodInfoEvent
 data CGpiodLineInfo 
 data CGpiodLineSettings  
-data CGpiodLineClock 
 data CGpiodLineConfig  
 data CGpiodLineRequest    
 data CGpiodRequestConfig
@@ -190,9 +189,6 @@ pattern Falling = EdgeEventType 2
 --------------------------------------------------------------------------------
 -- NATIVE HELPER TYPES 
 --------------------------------------------------------------------------------
-newtype EventBufferSize = EventBufferSize CSize 
-  deriving (Eq, Ord, Show, Read, Storable)
-
 data WaitResult 
   = Timeout
   | EventReady 

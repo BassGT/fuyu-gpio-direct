@@ -14,6 +14,7 @@ import Foreign.Ptr (Ptr, nullPtr)
 import Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
+import Data.Word (Word64)
 
 import Fuyu.GPIO.Direct.Bindings
 import Fuyu.GPIO.Direct.Types
@@ -550,30 +551,7 @@ lineRequestReadEdgeEvents (LineRequest reqPtr) (EventBuffer bufPtr) maxEvents = 
 --------------------------------------------------------------------------------
 -- 10. EDGE EVENTS & EVENT BUFFER
 --------------------------------------------------------------------------------
-
--- | Allocate a new 'EventBuffer' with the specified capacity.
-eventBufferNew :: EventBufferCapacity -> IO (Either Errno EventBuffer)
-eventBufferNew cap = do
-  res <- checkNull $ c_gpiod_edge_event_buffer_new cap
-  return $ EventBuffer <$> res
-
--- | Free an 'EventBuffer' and release all associated resources.
-eventBufferFree :: EventBuffer -> IO ()
-eventBufferFree (EventBuffer ptr) = c_gpiod_edge_event_buffer_free ptr
-
--- | Get the capacity of an 'EventBuffer'.
-eventBufferCapacity :: EventBuffer -> IO Word
-eventBufferCapacity (EventBuffer ptr) =
-  fromIntegral <$> c_gpiod_edge_event_buffer_get_capacity ptr
-
--- | Retrieve raw edge event pointer from buffer by index.
-eventBufferGetEvent :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
-eventBufferGetEvent (EventBuffer buffer) idx = do
-  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer idx)
-  return $ RawEdgeEvent <$> res
-
-
--- | Free a 'RawEdgeEvent'.
+-- | Free a RawEdgeEvent.
 rawEdgeEventFree :: RawEdgeEvent -> IO ()
 rawEdgeEventFree (RawEdgeEvent event) = c_gpiod_edge_event_free event
 
@@ -583,10 +561,6 @@ rawEdgeEventCopy (RawEdgeEvent event) = do
   res <- checkNull (c_gpiod_edge_event_copy event)
   return $ RawEdgeEvent <$> res
 
--- | Extract line offset from raw edge event pointer.
-rawEdgeEventLineOffset :: RawEdgeEvent -> IO LineOffset
-rawEdgeEventLineOffset (RawEdgeEvent event) = c_gpiod_edge_event_get_line_offset event
-
 -- | Extract event type from raw edge event pointer.
 rawEdgeEventType :: RawEdgeEvent -> IO EdgeEventType
 rawEdgeEventType (RawEdgeEvent event) = c_gpiod_edge_event_get_event_type event
@@ -595,10 +569,55 @@ rawEdgeEventType (RawEdgeEvent event) = c_gpiod_edge_event_get_event_type event
 rawEdgeEventTimestampNs :: RawEdgeEvent -> IO TimestampNs
 rawEdgeEventTimestampNs (RawEdgeEvent event) = c_gpiod_edge_event_get_timestamp_ns event
 
--- | Parse RawEdgeEvent into pure EdgeEvent.
-rawEdgeEventToEdgeEvent :: RawEdgeEvent -> IO EdgeEvent
-rawEdgeEventToEdgeEvent raw = EdgeEvent
-  <$> rawEdgeEventLineOffset raw
-  <*> rawEdgeEventType raw
-  <*> rawEdgeEventTimestampNs raw
+-- | Get the offset of the line which triggered the event.
+rawEdgeEventLineOffset :: RawEdgeEvent -> IO LineOffset
+rawEdgeEventLineOffset (RawEdgeEvent event) = c_gpiod_edge_event_get_line_offset event 
 
+-- | Get the global sequence number of the event.
+rawEdgeEventGlobalSeqNo :: RawEdgeEvent -> IO Word64 
+rawEdgeEventGlobalSeqNo (RawEdgeEvent event) =
+  fromIntegral <$> c_gpiod_edge_event_get_global_seqno event  
+
+-- | Get the event sequence number specific to the line.
+rawEdgeEventLineSeqNo :: RawEdgeEvent -> IO LineOffset
+rawEdgeEventLineSeqNo (RawEdgeEvent event) = c_gpiod_edge_event_get_line_seqno event  
+
+-- | Allocate a new 'EventBuffer' with the specified capacity.
+eventBufferNew :: EventBufferCapacity -> IO (Either Errno EventBuffer)
+eventBufferNew cap = do
+  res <- checkNull $ c_gpiod_edge_event_buffer_new cap
+  return $ EventBuffer <$> res
+
+-- | Get the capacity of an 'EventBuffer'.
+eventBufferCapacity :: EventBuffer -> IO Word
+eventBufferCapacity (EventBuffer buffer) =
+  fromIntegral <$> c_gpiod_edge_event_buffer_get_capacity buffer 
+
+-- | Free an 'EventBuffer' and release all associated resources.
+eventBufferFree :: EventBuffer -> IO ()
+eventBufferFree (EventBuffer buffer) = c_gpiod_edge_event_buffer_free buffer 
+
+-- | Retrieve raw edge event pointer from buffer by index.
+eventBufferGetEvent :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
+eventBufferGetEvent (EventBuffer buffer) idx = do
+  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer idx)
+  return $ RawEdgeEvent <$> res
+
+-- | gpiod_edge_event_buffer_get_num_events
+eventBufferNumEvents :: EventBuffer -> IO Word
+eventBufferNumEvents (EventBuffer buffer) =
+  fromIntegral <$> c_gpiod_edge_event_buffer_get_num_events buffer  
+
+--------------------------------------------------------------------------------
+-- 11. EDGE EVENTS & EVENT BUFFER
+--------------------------------------------------------------------------------
+-- Check if the file pointed to by path is a GPIO chip character devic
+isGPIOChip :: ByteString -> IO Bool
+isGPIOChip path = do
+  BS.useAsCString path (fmap toBool . c_gpiod_is_gpiochip_device)
+
+-- Get the API version of the library as a 'ByteString'.
+gpiodAPIVersion :: IO ByteString
+gpiodAPIVersion = do
+  ver <- c_gpiod_api_version
+  BS.packCString ver 
