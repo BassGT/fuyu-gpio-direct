@@ -40,27 +40,18 @@ newtype LineRequest = LineRequest (Ptr CGpiodLineRequest)
   deriving (Eq, Ord, Show)
 newtype RequestConfig = RequestConfig (Ptr CGpiodRequestConfig)
   deriving (Eq, Ord, Show)
-data EventBuffer = EventBuffer (Ptr CGpiodEdgeEventBuffer) EventBufferCapacity 
+newtype EventBuffer = EventBuffer (Ptr CGpiodEdgeEventBuffer) 
   deriving (Eq, Ord, Show)
 newtype RawEdgeEvent = RawEdgeEvent (Ptr CGpiodEdgeEvent)
   deriving (Eq, Ord, Show)
 
 -- | Safety wrappers for type-safe APIs.
 newtype LineOffset = LineOffset CUInt
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
+  deriving (Eq, Ord, Show, Read, Storable)
 newtype EventBufferCapacity = EventBufferCapacity CSize
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
+  deriving (Eq, Ord, Show, Read, Storable)
 newtype BufferIndex = BufferIndex CULong
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
-
--- | Safely construct an 'EventBufferCapacity'.
---
--- Clamps 0 to a default of 64, and caps maximum capacity at 1024.
-eventBufferCapacity :: Word -> EventBufferCapacity
-eventBufferCapacity 0 = EventBufferCapacity 64
-eventBufferCapacity n
-  | n > 1024  = EventBufferCapacity 1024
-  | otherwise = EventBufferCapacity (fromIntegral n)
+  deriving (Eq, Ord, Show, Read, Storable)
 
 --------------------------------------------------------------------------------
 -- LINE DEFINITIONS TYPES

@@ -6,6 +6,7 @@ import Foreign.C.Types (CInt(..), CLong(..), CSize(..), CUInt(..), CULong(..), C
 import Foreign.Ptr (Ptr)
 import Fuyu.GPIO.Direct.Types
 import Data.Int (Int64)
+import System.Posix (Fd(..))
 
 --------------------------------------------------------------------------------
 -- 1. CHIP MANAGEMENT
@@ -33,7 +34,7 @@ foreign import ccall "gpiod_chip_unwatch_line_info"
   c_gpiod_chip_unwatch_line_info :: Ptr CGpiodChip -> LineOffset -> IO CInt
 
 foreign import ccall "gpiod_chip_get_fd"
-  c_gpiod_chip_get_fd :: Ptr CGpiodChip -> IO CInt 
+  c_gpiod_chip_get_fd :: Ptr CGpiodChip -> IO Fd
 
 foreign import ccall "gpiod_chip_wait_info_event"
   c_gpiod_chip_wait_info_event :: Ptr CGpiodChip -> Int64 -> IO CInt 
@@ -266,12 +267,31 @@ foreign import ccall "gpiod_line_request_get_value"
 foreign import ccall "gpiod_line_request_get_values_subset"
   c_gpiod_line_request_get_values_subset :: Ptr CGpiodLineRequest
                                          -> CSize
-                                         -> Ptr CUInt
-                                         -> Ptr CInt
+                                         -> Ptr LineOffset
+                                         -> Ptr LineValue
                                          -> IO CInt
 
+foreign import ccall "gpiod_line_request_get_values"
+  c_gpiod_line_request_get_values :: Ptr CGpiodLineRequest -> Ptr LineValue -> IO CInt 
+  
 foreign import ccall "gpiod_line_request_set_value"
   c_gpiod_line_request_set_value :: Ptr CGpiodLineRequest -> LineOffset -> LineValue -> IO CInt 
+
+foreign import ccall "gpiod_line_request_set_values_subset"
+  c_gpiod_line_request_set_values_subset :: Ptr CGpiodLineRequest
+                                          -> CSize
+                                          -> Ptr LineOffset
+                                          -> Ptr LineValue
+                                          -> IO CInt
+
+foreign import ccall "gpiod_line_request_set_values"
+  c_gpiod_line_request_set_values :: Ptr CGpiodLineRequest -> Ptr LineValue -> IO CInt 
+
+foreign import ccall "gpiod_line_request_reconfigure_lines"
+  c_gpiod_line_request_reconfigure_lines :: Ptr CGpiodLineRequest -> Ptr CGpiodLineConfig -> IO CInt  
+
+foreign import ccall "gpiod_line_request_get_fd"
+  c_gpiod_line_request_get_fd :: Ptr CGpiodLineRequest -> IO Fd 
 
 foreign import ccall "gpiod_line_request_wait_edge_events"
   c_gpiod_line_request_wait_edge_events :: Ptr CGpiodLineRequest -> CLong -> IO CInt
@@ -289,11 +309,20 @@ foreign import ccall "gpiod_edge_event_buffer_new"
 foreign import ccall "gpiod_edge_event_buffer_free"
   c_gpiod_edge_event_buffer_free :: Ptr CGpiodEdgeEventBuffer -> IO ()
 
-foreign import ccall "gpiod_edge_event_get_event_type"
-  c_gpiod_edge_event_get_event_type :: Ptr CGpiodEdgeEvent -> IO EdgeEventType
+foreign import ccall "gpiod_edge_event_buffer_get_capacity"
+  c_gpiod_edge_event_buffer_get_capacity :: Ptr CGpiodEdgeEventBuffer -> IO CSize
 
 foreign import ccall "gpiod_edge_event_buffer_get_event"
   c_gpiod_edge_event_buffer_get_event :: Ptr CGpiodEdgeEventBuffer -> BufferIndex -> IO (Ptr CGpiodEdgeEvent)
+
+foreign import ccall "gpiod_edge_event_copy"
+  c_gpiod_edge_event_copy :: Ptr CGpiodEdgeEvent -> IO (Ptr CGpiodEdgeEvent)
+
+foreign import ccall "gpiod_edge_event_free"
+  c_gpiod_edge_event_free :: Ptr CGpiodEdgeEvent -> IO ()
+
+foreign import ccall "gpiod_edge_event_get_event_type"
+  c_gpiod_edge_event_get_event_type :: Ptr CGpiodEdgeEvent -> IO EdgeEventType
 
 foreign import ccall "gpiod_edge_event_get_timestamp_ns" 
   c_gpiod_edge_event_get_timestamp_ns :: Ptr CGpiodEdgeEvent -> IO TimestampNs 

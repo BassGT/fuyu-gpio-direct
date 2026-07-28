@@ -5,11 +5,8 @@ module Fuyu.GPIO.Direct
   ) where
 
 import System.Posix.Types (Fd(..))
-import Control.Monad (forM)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NE
 import Foreign.C.Error (Errno, getErrno, eINVAL)
 import Foreign.C.Types (CInt(..), CLong(..))
 import Foreign.Marshal.Utils (toBool)
@@ -95,7 +92,7 @@ chipUnwatchLineInfo (Chip ptr) offset = do
 
 -- | Get the file descriptor associated with the chip.
 chipFd :: Chip -> IO Fd
-chipFd (Chip ptr) = Fd <$> c_gpiod_chip_get_fd ptr
+chipFd (Chip ptr) = c_gpiod_chip_get_fd ptr
 
 -- | Wait for line status change events on any of the watched lines on the chip. 
 chipWaitInfoEvent :: Chip -> TimeoutNs -> IO (Either Errno WaitResult)
@@ -478,16 +475,64 @@ lineRequestValue (LineRequest request) offset = do
     then Left <$> getErrno
     else return $ Right lineValue
 
+-- | Get the values of a subset of requested lines into a Storable 'Vector'.
+lineRequestSubsetValues :: LineRequest -> Vector LineOffset -> IO (Either Errno (Vector LineValue))
+lineRequestSubsetValues (LineRequest request) offsets = do
+  let numValues = V.length offsets
+  mutValues <- MV.new numValues
+  res <- V.unsafeWith offsets $ \offsetsPtr ->
+    MV.unsafeWith mutValues $ \valuesPtr ->
+      c_gpiod_line_request_get_values_subset request (fromIntegral numValues) offsetsPtr valuesPtr
+  if res == -1
+    then Left <$> getErrno
+    else Right <$> V.unsafeFreeze mutValues
+
+-- | Get the values of all requested lines into a Storable 'Vector'.
+lineRequestValues :: LineRequest -> IO (Either Errno (Vector LineValue))
+lineRequestValues (LineRequest request) = do
+  numLines <- c_gpiod_line_request_get_num_requested_lines request
+  mutValues <- MV.new (fromIntegral numLines)
+  res <- MV.unsafeWith mutValues $ \valuesPtr ->
+    c_gpiod_line_request_get_values request valuesPtr
+  if res == -1
+    then Left <$> getErrno
+    else Right <$> V.unsafeFreeze mutValues
+
 -- | Set the logical value of a requested line.
 lineRequestSetValue :: LineRequest -> LineOffset -> LineValue -> IO (Either Errno ())
 lineRequestSetValue _ _ LineError = return (Left eINVAL)
 lineRequestSetValue (LineRequest request) offset value =
   checkMinusOne $ c_gpiod_line_request_set_value request offset value
 
+-- | Set the logical values of a subset of requested lines from Storable 'Vector's of offsets and values.
+lineRequestSetValuesSubset :: LineRequest -> Vector LineOffset -> Vector LineValue -> IO (Either Errno ())
+lineRequestSetValuesSubset (LineRequest request) offsets values
+  | V.length offsets /= V.length values = return (Left eINVAL)
+  | otherwise =
+      let numValues = V.length offsets
+      in V.unsafeWith offsets $ \offsetsPtr ->
+           V.unsafeWith values $ \valuesPtr ->
+             checkMinusOne $ c_gpiod_line_request_set_values_subset request (fromIntegral numValues) offsetsPtr valuesPtr
+
+-- | Set the logical values of all requested lines from a Storable 'Vector'.
+lineRequestSetValues :: LineRequest -> Vector LineValue -> IO (Either Errno ())
+lineRequestSetValues (LineRequest request) values =
+  V.unsafeWith values $ \valuesPtr ->
+    checkMinusOne $ c_gpiod_line_request_set_values request valuesPtr
+
+-- | Update the configuration of lines associated with a line request.
+lineRequestReconfigure :: LineRequest -> LineConfig -> IO (Either Errno ())
+lineRequestReconfigure (LineRequest request) (LineConfig config) =
+  checkMinusOne $ c_gpiod_line_request_reconfigure_lines request config  
+
+-- | Get the file descriptor associated with the line request.
+lineRequestFd :: LineRequest -> IO Fd
+lineRequestFd (LineRequest request) = c_gpiod_line_request_get_fd request
+
 -- | Wait for edge events to occur on requested lines.
 lineRequestWaitEdgeEvents :: LineRequest -> TimeoutNs -> IO (Either Errno WaitResult)
-lineRequestWaitEdgeEvents (LineRequest requestPtr) timeoutNs = do
-  res <- c_gpiod_line_request_wait_edge_events requestPtr (timeoutNsToC timeoutNs)
+lineRequestWaitEdgeEvents (LineRequest request) timeoutNs = do
+  res <- c_gpiod_line_request_wait_edge_events request (timeoutNsToC timeoutNs)
   if res == -1
     then Left <$> getErrno
     else case res of
@@ -495,23 +540,47 @@ lineRequestWaitEdgeEvents (LineRequest requestPtr) timeoutNs = do
       0 -> return $ Right Timeout
       _ -> return $ Right Timeout
 
-
+-- | Read up to 'maxEvents' edge events from a line request into an 'EventBuffer'.
+lineRequestReadEdgeEvents :: LineRequest -> EventBuffer -> Word -> IO (Either Errno Int)
+lineRequestReadEdgeEvents (LineRequest reqPtr) (EventBuffer bufPtr) maxEvents = do
+  count <- c_gpiod_line_request_read_edge_events reqPtr bufPtr (fromIntegral maxEvents)
+  if count == -1
+    then Left <$> getErrno
+    else return $ Right (fromIntegral count)
 --------------------------------------------------------------------------------
 -- 10. EDGE EVENTS & EVENT BUFFER
 --------------------------------------------------------------------------------
 
--- | Read raw edge events into buffer.
-lineRequestReadEdgeEventsIntoBuffer :: LineRequest -> EventBuffer -> IO (Either Errno Int)
-lineRequestReadEdgeEventsIntoBuffer (LineRequest reqPtr) (EventBuffer buffer (EventBufferCapacity maxEvents)) = do
-  count <- c_gpiod_line_request_read_edge_events reqPtr buffer maxEvents
-  if count == -1
-    then Left <$> getErrno
-    else return $ Right (fromIntegral count)
+-- | Allocate a new 'EventBuffer' with the specified capacity.
+eventBufferNew :: EventBufferCapacity -> IO (Either Errno EventBuffer)
+eventBufferNew cap = do
+  res <- checkNull $ c_gpiod_edge_event_buffer_new cap
+  return $ EventBuffer <$> res
 
--- | Retrieve raw edge event pointer from buffer.
-eventBufferRawEvent :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
-eventBufferRawEvent (EventBuffer buffer _) idx = do
+-- | Free an 'EventBuffer' and release all associated resources.
+eventBufferFree :: EventBuffer -> IO ()
+eventBufferFree (EventBuffer ptr) = c_gpiod_edge_event_buffer_free ptr
+
+-- | Get the capacity of an 'EventBuffer'.
+eventBufferCapacity :: EventBuffer -> IO Word
+eventBufferCapacity (EventBuffer ptr) =
+  fromIntegral <$> c_gpiod_edge_event_buffer_get_capacity ptr
+
+-- | Retrieve raw edge event pointer from buffer by index.
+eventBufferGetEvent :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
+eventBufferGetEvent (EventBuffer buffer) idx = do
   res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer idx)
+  return $ RawEdgeEvent <$> res
+
+
+-- | Free a 'RawEdgeEvent'.
+rawEdgeEventFree :: RawEdgeEvent -> IO ()
+rawEdgeEventFree (RawEdgeEvent event) = c_gpiod_edge_event_free event
+
+-- | Copy a 'RawEdgeEvent'.
+rawEdgeEventCopy :: RawEdgeEvent -> IO (Either Errno RawEdgeEvent)
+rawEdgeEventCopy (RawEdgeEvent event) = do
+  res <- checkNull (c_gpiod_edge_event_copy event)
   return $ RawEdgeEvent <$> res
 
 -- | Extract line offset from raw edge event pointer.
@@ -532,33 +601,4 @@ rawEdgeEventToEdgeEvent raw = EdgeEvent
   <$> rawEdgeEventLineOffset raw
   <*> rawEdgeEventType raw
   <*> rawEdgeEventTimestampNs raw
-
--- | Read buffered edge events once lineRequestWaitEdgeEvents indicates readiness.
-lineRequestReadEdgeEvents :: LineRequest -> EventBuffer -> IO (Either Errno (NonEmpty EdgeEvent))
-lineRequestReadEdgeEvents req buf = do
-  eCount <- lineRequestReadEdgeEventsIntoBuffer req buf
-  case eCount of
-    Left err -> return (Left err)
-    Right count -> do
-      events <- forM [0 .. (count - 1)] $ \idx -> do
-        eRaw <- eventBufferRawEvent buf (BufferIndex (fromIntegral idx))
-        case eRaw of
-          Left _ -> error "lineRequestReadEdgeEvents: invalid raw event index"
-          Right raw -> rawEdgeEventToEdgeEvent raw
-      case NE.nonEmpty events of
-        Just ne -> return (Right ne)
-        Nothing -> return (Left eINVAL)
-
--- | Allocate a new 'EventBuffer' with the specified capacity.
---
--- Uses 'eventBufferCapacity' to clamp capacity safely between 64 and 1024.
-eventBufferNew :: EventBufferCapacity -> IO (Either Errno EventBuffer)
-eventBufferNew (EventBufferCapacity cap) = do
-  let safeCap = eventBufferCapacity (fromIntegral cap)
-  res <- checkNull (c_gpiod_edge_event_buffer_new safeCap)
-  return $ (\ptr -> EventBuffer ptr safeCap) <$> res
-
--- | Free an 'EventBuffer' and release all associated resources.
-eventBufferFree :: EventBuffer -> IO ()
-eventBufferFree (EventBuffer ptr _) = c_gpiod_edge_event_buffer_free ptr
 
