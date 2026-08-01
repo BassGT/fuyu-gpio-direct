@@ -1,8 +1,8 @@
 {-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Fuyu.GPIO.Direct
--- Description : High-level Haskell bindings for Linux GPIO character device interface (libgpiod v2).
--- Maintainer  : Fuyu GPIO Maintainers
+-- Description : Mid-level Haskell bindings for Linux GPIO character device interface (libgpiod v2).
+-- Maintainer  : BassGT
 -- Portability : POSIX (Linux GPIO character device interface)
 --
 -- High-level direct Haskell interface for interacting with Linux GPIO character devices

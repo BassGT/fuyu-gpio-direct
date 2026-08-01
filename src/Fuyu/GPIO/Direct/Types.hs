@@ -3,7 +3,7 @@
 -- |
 -- Module      : Fuyu.GPIO.Direct.Types
 -- Description : Core data types, newtype wrappers, and C enum pattern synonyms for libgpiod v2 bindings.
--- Maintainer  : Fuyu GPIO Maintainers
+-- Maintainer  : BassGT
 -- Portability : POSIX (Linux GPIO character device interface)
 --
 -- This module defines all data types, opaque handles, safety wrappers, pattern

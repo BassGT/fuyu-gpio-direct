@@ -1,12 +1,18 @@
 cabal-version:      3.0
 name:               fuyu-gpio-direct 
 version:            0.1.0.0
-synopsis:           Bindings for [Libgpiod](https://libgpiod.readthedocs.io/en/master/index.html) in Haskell.
+synopsis:           Direct Haskell bindings for Linux libgpiod v2
+description:
+    High-level and low-level Haskell bindings for interacting with Linux GPIO
+    character devices using libgpiod v2. Provides type-safe abstractions for
+    line requests, chip management, edge event monitoring, and settings.
 license:            LGPL-2.1-or-later
+license-file:       LICENSE
 author:             BassGT
 maintainer:         springtrap9397@gmail.com
-category:           System
+category:           System, Hardware
 build-type:         Simple
+extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
@@ -17,10 +23,9 @@ library
                       Fuyu.GPIO.Direct.Types,
                       Fuyu.GPIO.Direct.Bindings
     build-depends:    base >= 4.18 && < 5,
-                      bytestring,
-                      unix,
-                      vector
+                      bytestring >= 0.10 && < 0.13,
+                      unix >= 2.7 && < 2.9,
+                      vector >= 0.12 && < 0.14
     extra-libraries:  gpiod
     hs-source-dirs:   src
     default-language: Haskell2010
-
