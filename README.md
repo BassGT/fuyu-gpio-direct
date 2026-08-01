@@ -36,6 +36,11 @@ sudo apt install -y libgpiod-dev gpiod
 sudo pacman -S libgpiod
 ```
 
+### Fedora Linux
+```bash
+sudo dnf install libgpiod libgpiod-dev
+```
+
 ---
 
 ## 📦 Installation
@@ -76,7 +81,7 @@ cabal haddock --haddock-hyperlinked-source --open
 
 ## 🛠️ Module Architecture
 
-- **`Fuyu.GPIO.Direct`**: Primary high-level, type-safe API for Haskell applications.
+- **`Fuyu.GPIO.Direct`**: Primary Mid-level, type-safe API for Haskell applications.
 - **`Fuyu.GPIO.Direct.Types`**: Core data types, opaque handles, newtype wrappers, and C enum pattern synonyms.
 - **`Fuyu.GPIO.Direct.Bindings`**: Raw Foreign Function Interface (FFI) bindings mapping directly to C `libgpiod v2` symbols.
 

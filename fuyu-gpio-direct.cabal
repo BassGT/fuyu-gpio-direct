@@ -3,7 +3,7 @@ name:               fuyu-gpio-direct
 version:            0.1.0.0
 synopsis:           Direct Haskell bindings for Linux libgpiod v2
 description:
-    High-level and low-level Haskell bindings for interacting with Linux GPIO
+    Mid-level and low-level Haskell bindings for interacting with Linux GPIO
     character devices using libgpiod v2. Provides type-safe abstractions for
     line requests, chip management, edge event monitoring, and settings.
 license:            LGPL-2.1-or-later
