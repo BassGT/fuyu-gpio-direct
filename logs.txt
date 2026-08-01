@@ -1,0 +1,104 @@
+Build profile: -w ghc-9.8.4 -O1
+In order, the following will be built (use -v for more details):
+ - fuyu-gpio-direct-0.1.0.0 (lib) (first run)
+Preprocessing library for fuyu-gpio-direct-0.1.0.0...
+Running Haddock on library for fuyu-gpio-direct-0.1.0.0...
+[1 of 3] Compiling Fuyu.GPIO.Direct.Types ( src/Fuyu/GPIO/Direct/Types.hs, nothing )
+[2 of 3] Compiling Fuyu.GPIO.Direct.Bindings ( src/Fuyu/GPIO/Direct/Bindings.hs, nothing )
+[3 of 3] Compiling Fuyu.GPIO.Direct ( src/Fuyu/GPIO/Direct.hs, nothing )
+Haddock coverage:
+Warning: 'EventBuffer' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:108:23
+    * at src/Fuyu/GPIO/Direct/Types.hs:108:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:108:1
+Warning: 'LineSettings' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:84:24
+    * at src/Fuyu/GPIO/Direct/Types.hs:84:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:84:1
+ 100% ( 62 / 62) in 'Fuyu.GPIO.Direct.Types'
+ 100% ( 97 / 97) in 'Fuyu.GPIO.Direct.Bindings'
+Warning: 'Chip' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:60:16
+    * at src/Fuyu/GPIO/Direct/Types.hs:60:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:60:1
+Warning: 'ChipInfo' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:66:20
+    * at src/Fuyu/GPIO/Direct/Types.hs:66:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:66:1
+Warning: 'LineInfo' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:78:20
+    * at src/Fuyu/GPIO/Direct/Types.hs:78:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:78:1
+Warning: 'InfoEvent' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:72:21
+    * at src/Fuyu/GPIO/Direct/Types.hs:72:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:72:1
+Warning: 'LineOffset' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:119:22
+    * at src/Fuyu/GPIO/Direct/Types.hs:119:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:119:1
+Warning: 'RequestConfig' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:102:25
+    * at src/Fuyu/GPIO/Direct/Types.hs:102:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:102:1
+Warning: 'LineConfig' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:90:22
+    * at src/Fuyu/GPIO/Direct/Types.hs:90:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:90:1
+Warning: 'LineRequest' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:96:23
+    * at src/Fuyu/GPIO/Direct/Types.hs:96:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:96:1
+Warning: 'LineSettings' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:84:24
+    * at src/Fuyu/GPIO/Direct/Types.hs:84:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:84:1
+Warning: 'LineValue' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:138:21
+    * at src/Fuyu/GPIO/Direct/Types.hs:138:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:138:1
+Warning: 'EventBuffer' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:108:23
+    * at src/Fuyu/GPIO/Direct/Types.hs:108:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:108:1
+Warning: 'RawEdgeEvent' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:115:24
+    * at src/Fuyu/GPIO/Direct/Types.hs:115:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:115:1
+Warning: 'BufferIndex' is ambiguous. It is defined
+    * at src/Fuyu/GPIO/Direct/Types.hs:127:23
+    * at src/Fuyu/GPIO/Direct/Types.hs:127:1
+    You may be able to disambiguate the identifier by qualifying it or
+    by specifying the type/value namespace explicitly.
+    Defaulting to the one defined at src/Fuyu/GPIO/Direct/Types.hs:127:1
+ 100% (163 /163) in 'Fuyu.GPIO.Direct'
+Documentation created:
+/home/bass/Code/Haskell/Projects/gpiodBindings/fuyu-gpio-direct/./dist-newstyle/build/x86_64-linux/ghc-9.8.4/fuyu-gpio-direct-0.1.0.0/doc/html/fuyu-gpio-direct

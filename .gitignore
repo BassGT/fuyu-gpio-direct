@@ -1,29 +1,6 @@
-# Cabal build directory
 dist-newstyle/
-dist/
-
-# Stack build directory
-.stack-work/
-
-# Object files and interface files
+.ghc.environment.*
 *.o
 *.hi
 *.dyn_o
 *.dyn_hi
-*.chi
-*.chs.h
-
-# HPC coverage
-.hpc
-
-# GHC environment files
-.ghc.environment.*
-
-# Temporary / editor files
-*~
-*.swp
-*.swo
-.DS_Store
-.project
-.vscode/
-.idea/
