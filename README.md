@@ -60,9 +60,6 @@ packages:
 
 ---
 
-
----
-
 ## 📚 Documentation
 
 Complete online Haddock API documentation with hyperlinked source code is published at:
@@ -95,4 +92,3 @@ This library is licensed under the **LGPL-2.1-or-later** license. See the [LICEN
 
 - **Author**: BassGT
 - **Maintainer**: `springtrap9397@gmail.com`
-- **Repository**: [https://github.com/BassGT/fuyu-gpio-direct](https://github.com/BassGT/fuyu-gpio-direct)
