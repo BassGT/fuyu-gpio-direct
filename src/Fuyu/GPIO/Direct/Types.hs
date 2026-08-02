@@ -18,6 +18,7 @@ module Fuyu.GPIO.Direct.Types where
 
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable)
+import Data.Word (Word64)
 import Foreign.C.Types (CInt(..), CUInt(..), CULong(..))
 
 --------------------------------------------------------------------------------
@@ -120,9 +121,6 @@ newtype LineOffset = LineOffset CUInt
   deriving (Eq, Ord, Show, Read, Storable)
 
 
--- | Type-safe zero-based index into an t'EventBuffer.
-newtype BufferIndex = BufferIndex CULong
-  deriving (Eq, Ord, Show, Read, Storable)
 
 --------------------------------------------------------------------------------
 -- LINE DEFINITIONS TYPES
@@ -305,8 +303,7 @@ data TimeoutNs
   deriving (Eq, Ord, Show, Read)
 
 -- | Absolute timestamp represented in nanoseconds.
-newtype TimestampNs = TimestampNs CULong
-  deriving (Eq, Ord, Show, Read, Num, Enum, Real, Integral, Storable)
+type TimestampNs = Word64
 
 -- | Pure Haskell structure containing parsed edge event information.
 data EdgeEvent = EdgeEvent 

@@ -25,7 +25,6 @@ module Fuyu.GPIO.Direct
 
     -- * Safety & Index Wrappers
   , LineOffset(..)
-  , BufferIndex(..)
 
     -- * Line Definitions & Patterns
   , LineValue(..)
@@ -72,7 +71,7 @@ module Fuyu.GPIO.Direct
 
   , WaitResult(..)
   , TimeoutNs(..)
-  , TimestampNs(..)
+  , TimestampNs
   , EdgeEvent(..)
 
     -- * Chip Management
@@ -845,10 +844,10 @@ eventBufferCapacity (EventBuffer buffer) =
 eventBufferFree :: EventBuffer -> IO ()
 eventBufferFree (EventBuffer buffer) = c_gpiod_edge_event_buffer_free buffer 
 
--- | Retrieve a raw edge event pointer from the buffer by zero-based t'BufferIndex.
-eventBufferGetEvent :: EventBuffer -> BufferIndex -> IO (Either Errno RawEdgeEvent)
+-- | Retrieve a raw edge event pointer from the buffer by zero-based index.
+eventBufferGetEvent :: EventBuffer -> Word -> IO (Either Errno RawEdgeEvent)
 eventBufferGetEvent (EventBuffer buffer) idx = do
-  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer idx)
+  res <- checkNull (c_gpiod_edge_event_buffer_get_event buffer (fromIntegral idx))
   return $ RawEdgeEvent <$> res
 
 -- | Query the number of edge events currently populated in the buffer.

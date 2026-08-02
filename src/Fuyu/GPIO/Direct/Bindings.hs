@@ -438,7 +438,7 @@ foreign import ccall unsafe "gpiod_edge_event_buffer_free"
 
 -- | Raw C call to @gpiod_edge_event_buffer_get_event@. Fetches event pointer by index from RAM array.
 foreign import ccall unsafe "gpiod_edge_event_buffer_get_event"
-  c_gpiod_edge_event_buffer_get_event :: Ptr CGpiodEdgeEventBuffer -> BufferIndex -> IO (Ptr CGpiodEdgeEvent)
+  c_gpiod_edge_event_buffer_get_event :: Ptr CGpiodEdgeEventBuffer -> CULong -> IO (Ptr CGpiodEdgeEvent)
 
 -- | Raw C call to @gpiod_edge_event_buffer_get_num_events@. Gets count of events from RAM.
 foreign import ccall unsafe "gpiod_edge_event_buffer_get_num_events"
