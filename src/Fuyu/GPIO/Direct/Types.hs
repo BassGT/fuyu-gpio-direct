@@ -131,7 +131,13 @@ newtype LineOffset = LineOffset CUInt
 -- Note that logical values account for active-low inversion: an active-low line set to
 -- 'LineActive' corresponds to a physical logic low voltage level on hardware.
 newtype LineValue = LineValue CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show LineValue where
+  show LineActive   = "Active"
+  show LineInactive = "Inactive"
+  show LineError    = "Error"
+  show (LineValue n) = "LineValue " ++ show n
 
 -- | Logical active state (1).
 pattern LineActive :: LineValue
@@ -149,7 +155,13 @@ pattern LineError = LineValue (-1)
 
 -- | GPIO line pin direction configuration.
 newtype LineDirection = LineDirection CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show LineDirection where
+  show DirAsIs   = "DirAsIs"
+  show DirInput  = "DirInput"
+  show DirOutput = "DirOutput"
+  show (LineDirection n) = "LineDirection " ++ show n
 
 -- | Leave line direction unchanged during configuration re-application.
 pattern DirAsIs :: LineDirection
@@ -167,7 +179,14 @@ pattern DirOutput = LineDirection 3
 
 -- | Edge detection mode for monitoring input signal transitions.
 newtype LineEdge = LineEdge CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show LineEdge where
+  show EdgeNone    = "EdgeNone"
+  show EdgeRising  = "EdgeRising"
+  show EdgeFalling = "EdgeFalling"
+  show EdgeBoth    = "EdgeBoth"
+  show (LineEdge n) = "LineEdge " ++ show n
 
 -- | Disable edge detection events on this line.
 pattern EdgeNone :: LineEdge
@@ -189,7 +208,15 @@ pattern EdgeBoth = LineEdge 4
 
 -- | Internal pull resistor bias configuration for a line.
 newtype LineBias = LineBias CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show LineBias where
+  show BiasAsIs     = "BiasAsIs"
+  show BiasUnknown  = "BiasUnknown"
+  show BiasDisabled = "BiasDisabled"
+  show BiasPullUp   = "BiasPullUp"
+  show BiasPullDown = "BiasPullDown"
+  show (LineBias n) = "LineBias " ++ show n
 
 -- | Keep current line bias settings unchanged.
 pattern BiasAsIs :: LineBias
@@ -215,7 +242,13 @@ pattern BiasPullDown = LineBias 5
 
 -- | Output pin driver mode configuration.
 newtype LineDrive = LineDrive CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show LineDrive where
+  show PushPull   = "PushPull"
+  show OpenDrain  = "OpenDrain"
+  show OpenSource = "OpenSource"
+  show (LineDrive n) = "LineDrive " ++ show n
 
 -- | Standard push-pull driver actively driving high and low output logic levels.
 pattern PushPull :: LineDrive
@@ -233,7 +266,13 @@ pattern OpenSource = LineDrive 3
 
 -- | Timestamp clock source used when recording line edge events in the kernel.
 newtype LineClock = LineClock CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show LineClock where
+  show Monotonic = "Monotonic"
+  show Realtime  = "Realtime"
+  show Hardware  = "Hardware"
+  show (LineClock n) = "LineClock " ++ show n
 
 -- | Kernel @CLOCK_MONOTONIC@ clock source (default).
 pattern Monotonic :: LineClock
@@ -255,7 +294,13 @@ pattern Hardware = LineClock 3
 
 -- | Type of status change event emitted when watching line status on a GPIO chip.
 newtype InfoEventType = InfoEventType CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show InfoEventType where
+  show LineRequested     = "LineRequested"
+  show LineReleased      = "LineReleased"
+  show LineConfigChanged = "LineConfigChanged"
+  show (InfoEventType n) = "InfoEventType " ++ show n
 
 -- | Line was claimed / requested by a process consumer.
 pattern LineRequested :: InfoEventType
@@ -273,7 +318,12 @@ pattern LineConfigChanged = InfoEventType 3
 
 -- | Direction of transition detected on an input edge event.
 newtype EdgeEventType = EdgeEventType CInt
-  deriving (Eq, Ord, Show, Read, Storable)
+  deriving (Eq, Ord, Read, Storable)
+
+instance Show EdgeEventType where
+  show Rising  = "Rising"
+  show Falling = "Falling"
+  show (EdgeEventType n) = "EdgeEventType " ++ show n
 
 -- | Low-to-high transition detected.
 pattern Rising :: EdgeEventType
