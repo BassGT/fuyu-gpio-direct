@@ -18,7 +18,7 @@ module Fuyu.GPIO.Direct.Types where
 
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable)
-import Foreign.C.Types (CInt(..), CUInt(..), CULong(..), CSize(..))
+import Foreign.C.Types (CInt(..), CUInt(..), CULong(..))
 
 --------------------------------------------------------------------------------
 -- CORE TYPES & WRAPPERS
@@ -119,9 +119,6 @@ newtype RawEdgeEvent = RawEdgeEvent (Ptr CGpiodEdgeEvent)
 newtype LineOffset = LineOffset CUInt
   deriving (Eq, Ord, Show, Read, Storable)
 
--- | Type-safe wrapper specifying the maximum event capacity when creating an t'EventBuffer.
-newtype EventBufferCapacity = EventBufferCapacity CSize
-  deriving (Eq, Ord, Show, Read, Storable)
 
 -- | Type-safe zero-based index into an t'EventBuffer.
 newtype BufferIndex = BufferIndex CULong

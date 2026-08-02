@@ -25,7 +25,6 @@ module Fuyu.GPIO.Direct
 
     -- * Safety & Index Wrappers
   , LineOffset(..)
-  , EventBufferCapacity(..)
   , BufferIndex(..)
 
     -- * Line Definitions & Patterns
@@ -832,9 +831,9 @@ rawEdgeEventLineSeqNo (RawEdgeEvent event) = c_gpiod_edge_event_get_line_seqno e
 -- | Allocate a new t'EventBuffer with the specified capacity.
 --
 -- Must be freed with 'eventBufferFree'.
-eventBufferNew :: EventBufferCapacity -> IO (Either Errno EventBuffer)
+eventBufferNew :: Word -> IO (Either Errno EventBuffer)
 eventBufferNew cap = do
-  res <- checkNull $ c_gpiod_edge_event_buffer_new cap
+  res <- checkNull $ c_gpiod_edge_event_buffer_new (fromIntegral cap)
   return $ EventBuffer <$> res
 
 -- | Query the maximum capacity of an t'EventBuffer.

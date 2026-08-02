@@ -426,7 +426,7 @@ foreign import ccall unsafe "gpiod_edge_event_get_line_seqno"
 
 -- | Raw C call to @gpiod_edge_event_buffer_new@. Allocates edge event buffer in RAM.
 foreign import ccall unsafe "gpiod_edge_event_buffer_new"
-  c_gpiod_edge_event_buffer_new :: EventBufferCapacity -> IO (Ptr CGpiodEdgeEventBuffer)
+  c_gpiod_edge_event_buffer_new :: CSize -> IO (Ptr CGpiodEdgeEventBuffer)
 
 -- | Raw C call to @gpiod_edge_event_buffer_get_capacity@. Gets buffer capacity from RAM.
 foreign import ccall unsafe "gpiod_edge_event_buffer_get_capacity"
