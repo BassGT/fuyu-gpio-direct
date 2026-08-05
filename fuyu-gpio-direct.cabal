@@ -9,10 +9,14 @@ description:
 license:            LGPL-2.1-or-later
 license-file:       LICENSE
 author:             BassGT
-maintainer:         springtrap9397@gmail.com
+maintainer:         sebastian11medrano@gmail.com
 category:           System, Hardware
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
+
+source-repository head
+    type:     git
+    location: https://github.com/BassGT/fuyu-gpio-direct.git
 
 common warnings
     ghc-options: -Wall
