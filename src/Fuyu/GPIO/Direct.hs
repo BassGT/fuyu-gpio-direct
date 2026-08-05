@@ -247,7 +247,7 @@ timeoutNsToC (Nanoseconds ns) = fromIntegral ns
 -- 1. CHIP MANAGEMENT
 --------------------------------------------------------------------------------
 
--- | Open a GPIO chip device node at the given filesystem path (e.g. @"/dev/gpiochip4"@).
+-- | Open a GPIO chip device node at the given filesystem path (e.g. @"\/dev\/gpiochip0"@).
 --
 -- Returns 'Right' t'Chip on success, or 'Left' 'Errno' on failure (such as 'Foreign.C.Error.eACCES'
 -- if permissions are missing or 'Foreign.C.Error.eNOENT' if the path does not exist).
@@ -272,7 +272,7 @@ chipInfo (Chip ptr) = do
 
 -- | Retrieve the filesystem device path used when opening the chip.
 --
--- Returns 'Right' 'ByteString' containing the path (e.g. @"/dev/gpiochip0"@).
+-- Returns 'Right' 'ByteString' containing the path (e.g. @"\/dev\/gpiochip0"@).
 chipPath :: Chip -> IO (Either Errno ByteString)
 chipPath (Chip ptr) = do
   res <- checkNull (c_gpiod_chip_get_path ptr)
@@ -859,7 +859,7 @@ eventBufferNumEvents (EventBuffer buffer) =
 -- 11. UTILITIES
 --------------------------------------------------------------------------------
 
--- | Check whether the filesystem path (e.g. @"/dev/gpiochip4"@) refers to a valid GPIO chip character device node.
+-- | Check whether the filesystem path (e.g. @"\/dev\/gpiochip0"@) refers to a valid GPIO chip character device node.
 isGPIOChip :: ByteString -> IO Bool
 isGPIOChip path = do
   BS.useAsCString path (fmap toBool . c_gpiod_is_gpiochip_device)
