@@ -7,11 +7,11 @@
 
 Direct, high-performance Haskell bindings for the Linux **`libgpiod v2`** character device API.
 
-`fuyu-gpio-direct` provides both low-level raw FFI wrappers (`Fuyu.GPIO.Direct.Bindings`) and a type-safe, idiomatic Haskell interface (`Fuyu.GPIO.Direct`) for controlling Linux GPIO lines, reading inputs, driving outputs, and monitoring hardware edge events.
+`fuyu-gpio-direct` provides both low-level raw FFI wrappers (`Fuyu.GPIO.Direct.Bindings`) and type-safe abstraction, idiomatic Haskell interface (`Fuyu.GPIO.Direct`) for controlling Linux GPIO lines, reading inputs, driving outputs, and monitoring hardware edge events.
 
 ---
 
-## ⚡ Features
+## Features
 
 - **Libgpiod v2 Native**: Fully compatible with Linux kernel GPIO character device ABI v2 (`/dev/gpiochipX`).
 - **Type Safety**: Strong newtype wrappers (`LineOffset`, `LineValue`, `LineDirection`, `LineBias`, etc.) prevent parameter transposition bugs.
@@ -21,7 +21,7 @@ Direct, high-performance Haskell bindings for the Linux **`libgpiod v2`** charac
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before compiling `fuyu-gpio-direct`, ensure your Linux system has `libgpiod v2` installed.
 
@@ -33,17 +33,19 @@ sudo apt install -y libgpiod-dev gpiod
 
 ### Arch Linux
 ```bash
+sudo pacman -Syu
 sudo pacman -S libgpiod
 ```
 
 ### Fedora Linux
 ```bash
+sudo dnf update
 sudo dnf install libgpiod libgpiod-dev
 ```
 
 ---
 
-## 📦 Installation
+## Installation
 
 Add `fuyu-gpio-direct` to your project's `.cabal` file under `build-depends`:
 
@@ -65,21 +67,15 @@ packages:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Complete online Haddock API documentation with hyperlinked source code is published at:
 
-👉 **[https://BassGT.github.io/fuyu-gpio-direct/](https://BassGT.github.io/fuyu-gpio-direct/)**
-
-To generate documentation locally with hyperlinked source code:
-
-```bash
-cabal haddock --haddock-hyperlinked-source --open
-```
+**[Hackage](https://hackage.haskell.org/package/fuyu-gpio-direct-0.1.0.0)**
 
 ---
 
-## 🛠️ Module Architecture
+## Module Architecture
 
 - **`Fuyu.GPIO.Direct`**: Primary Mid-level, type-safe API for Haskell applications.
 - **`Fuyu.GPIO.Direct.Types`**: Core data types, opaque handles, newtype wrappers, and C enum pattern synonyms.
@@ -87,13 +83,13 @@ cabal haddock --haddock-hyperlinked-source --open
 
 ---
 
-## 📄 License
+## License
 
 This library is licensed under the **LGPL-2.1-or-later** license. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 👤 Author & Maintainer
+## Author & Maintainer
 
 - **Author**: BassGT
-- **Maintainer**: `springtrap9397@gmail.com`
+- **Maintainer**: `sebastian11medrano@gmail.com`
