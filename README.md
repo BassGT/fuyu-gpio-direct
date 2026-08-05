@@ -1,9 +1,9 @@
 # fuyu-gpio-direct
 
-[![Build & Docs](https://github.com/BassGT/fuyu-gpio-direct/actions/workflows/haddock.yml/badge.svg)](https://github.com/BassGT/fuyu-gpio-direct/actions/workflows/haddock.yml)
+[![CI Build](https://github.com/BassGT/fuyu-gpio-direct/actions/workflows/ci.yml/badge.svg)](https://github.com/BassGT/fuyu-gpio-direct/actions/workflows/ci.yml)
 [![Haskell](https://img.shields.io/badge/Language-Haskell-purple.svg)](https://www.haskell.org/)
 [![License](https://img.shields.io/badge/License-LGPL_2.1--or--later-blue.svg)](LICENSE)
-[![Haddock Docs](https://img.shields.io/badge/Docs-GitHub%20Pages-brightgreen.svg)](https://BassGT.github.io/fuyu-gpio-direct/)
+[![Hackage](https://img.shields.io/badge/Hackage-fuyu--gpio--direct-blue.svg)](https://hackage.haskell.org/package/fuyu-gpio-direct)
 
 Direct, high-performance Haskell bindings for the Linux **`libgpiod v2`** character device API.
 
@@ -69,9 +69,15 @@ packages:
 
 ## Documentation
 
-Complete online Haddock API documentation with hyperlinked source code is published at:
+Complete online Haddock API documentation with hyperlinked source code is published on Hackage:
 
-**[Hackage](https://hackage.haskell.org/package/fuyu-gpio-direct-0.1.0.0)**
+👉 **[https://hackage.haskell.org/package/fuyu-gpio-direct](https://hackage.haskell.org/package/fuyu-gpio-direct)**
+
+To generate documentation locally with hyperlinked source code:
+
+```bash
+cabal haddock --haddock-hyperlinked-source --open
+```
 
 ---
 
